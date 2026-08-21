@@ -1,0 +1,13 @@
+{
+  "name": "devaid",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "dev": "pnpm --filter @devaid/web dev",
+    "build": "pnpm --filter @devaid/web build",
+    "typecheck": "pnpm --filter @devaid/web typecheck",
+    "lint": "pnpm --filter @devaid/web lint",
+    "preview": "pnpm --filter @devaid/web preview"
+  }
+}
