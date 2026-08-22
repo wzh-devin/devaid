@@ -1,6 +1,5 @@
 import { AppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { Navbar } from '@agile-avocation/ui-pro/navbar'
-import { Sidebar } from '@agile-avocation/ui-pro/sidebar'
 import { ArrowRightToSquare, Magnifier } from '@gravity-ui/icons'
 import { Button, Kbd, Tooltip } from '@heroui/react'
 import type { ChatActivePage } from '../chat-data.ts'
@@ -39,7 +38,6 @@ export function ChatNavbar({ activePage, onSearch }: ChatNavbarProps) {
     <Navbar maxWidth="full">
       <Navbar.Header>
         <AppLayout.MenuToggle aria-label="打开导航" />
-        <Sidebar.Trigger aria-label="切换侧边栏" />
         <div className="flex min-w-0 flex-col">
           <h1 className="truncate text-sm font-semibold text-foreground sm:text-base">
             {title}
@@ -51,6 +49,7 @@ export function ChatNavbar({ activePage, onSearch }: ChatNavbarProps) {
           <Tooltip delay={0}>
             <Button
               aria-label="搜索对话"
+              className="md:hidden"
               size="sm"
               variant="tertiary"
               onPress={onSearch}

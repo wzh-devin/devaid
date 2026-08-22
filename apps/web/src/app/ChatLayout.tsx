@@ -50,7 +50,7 @@ export function ChatLayout({
   return (
     <AppLayout
       navigate={onNavigate}
-      sidebarCollapsible="offcanvas"
+      sidebarCollapsible="icon"
       navbar={
         <ChatNavbar
           activePage={activePage}
@@ -60,6 +60,7 @@ export function ChatLayout({
       sidebar={
         <ChatSidebar
           activePage={activePage}
+          onSearch={() => setIsSearchOpen(true)}
           threads={CHAT_THREADS}
         />
       }
