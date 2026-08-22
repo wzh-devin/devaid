@@ -9,6 +9,7 @@ import { CHAT_THREADS } from '../features/chat/chat-data.ts'
 import { ChatNavbar } from '../features/chat/components/ChatNavbar.tsx'
 import { ChatSearchDialog } from '../features/chat/components/ChatSearchDialog.tsx'
 import { ChatSidebar } from '../features/chat/components/ChatSidebar.tsx'
+import { SettingsDialog } from '../features/settings/components/SettingsDialog.tsx'
 
 interface ChatLayoutProps {
   activePage: ChatActivePage
@@ -23,6 +24,7 @@ export function ChatLayout({
   onNavigate,
 }: ChatLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const handleThreadSelect = useCallback(
     (thread: ChatThread) => {
@@ -61,6 +63,7 @@ export function ChatLayout({
         <ChatSidebar
           activePage={activePage}
           onSearch={() => setIsSearchOpen(true)}
+          onSettings={() => setIsSettingsOpen(true)}
           threads={CHAT_THREADS}
         />
       }
@@ -71,6 +74,10 @@ export function ChatLayout({
         threads={CHAT_THREADS}
         onOpenChange={setIsSearchOpen}
         onSelect={handleThreadSelect}
+      />
+      <SettingsDialog
+        isOpen={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
       />
     </AppLayout>
   )

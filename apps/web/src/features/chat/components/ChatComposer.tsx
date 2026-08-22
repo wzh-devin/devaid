@@ -2,8 +2,9 @@ import type { ChangeEvent } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import { PromptInput } from '@agile-avocation/ui-pro/prompt-input'
-import { FileText, Globe, Paperclip, Xmark } from '@gravity-ui/icons'
-import { Button, ListBox, Select } from '@heroui/react'
+import { FileText, Paperclip, Xmark } from '@gravity-ui/icons'
+import { Button } from '@heroui/react'
+import { SelectMenu } from '../../../components/ui/SelectMenu.tsx'
 import { CHAT_MODELS } from '../chat-data.ts'
 
 interface PendingAttachment {
@@ -203,33 +204,15 @@ export function ChatComposer({
               <Paperclip className="size-4" />
             </PromptInput.Action>
 
-            <Select
-              aria-label="模型"
+            <SelectMenu
+              ariaLabel="模型"
+              className="w-auto min-w-32 shrink-0"
               isDisabled={isGenerating}
-              selectedKey={modelId}
-              variant="secondary"
-              onSelectionChange={(key) => setModelId(String(key))}
-            >
-              <Select.Trigger className="flex items-center gap-2">
-                <Globe className="size-4 shrink-0" />
-                <Select.Value />
-                <Select.Indicator />
-              </Select.Trigger>
-              <Select.Popover>
-                <ListBox>
-                  {CHAT_MODELS.map((model) => (
-                    <ListBox.Item
-                      key={model.id}
-                      id={model.id}
-                      textValue={model.label}
-                    >
-                      {model.label}
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                  ))}
-                </ListBox>
-              </Select.Popover>
-            </Select>
+              options={CHAT_MODELS}
+              triggerClassName="w-full"
+              value={modelId}
+              onChange={setModelId}
+            />
           </PromptInput.ToolbarStart>
 
           <PromptInput.ToolbarEnd>

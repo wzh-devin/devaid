@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 import { Sidebar, useSidebar } from '@agile-avocation/ui-pro/sidebar'
 import { Sheet } from '@agile-avocation/ui-pro/sheet'
-import { Comment, Magnifier } from '@gravity-ui/icons'
-import { Avatar, Button, Tooltip } from '@heroui/react'
+import { Comment, Gear, Magnifier } from '@gravity-ui/icons'
+import { Button, Tooltip } from '@heroui/react'
 import type {
   ChatActivePage,
   ChatThread,
@@ -12,16 +12,18 @@ import { CHAT_NAV_ITEMS } from '../chat-data.ts'
 interface ChatSidebarProps {
   activePage: ChatActivePage
   onSearch: () => void
+  onSettings: () => void
   threads: readonly ChatThread[]
 }
 
-/** 渲染品牌、聊天导航和用户信息，桌面与移动侧栏共享内容。 */
+/** 渲染品牌、聊天导航和设置入口，桌面与移动侧栏共享内容。 */
 export function ChatSidebar({
   activePage,
   onSearch,
+  onSettings,
   threads,
 }: ChatSidebarProps) {
-  const contentProps = { activePage, onSearch, threads }
+  const contentProps = { activePage, onSearch, onSettings, threads }
 
   return (
     <>
@@ -49,14 +51,18 @@ function SidebarContents({
   activePage,
   idPrefix = '',
   onSearch,
+  onSettings,
   threads,
 }: SidebarContentsProps) {
-  const { isMobile, isOpen } = useSidebar()
+  const { isMobile, isOpen, setMobileOpen } = useSidebar()
   const isCollapsed = !isMobile && !isOpen
   const visibleNavItems = isCollapsed
     ? CHAT_NAV_ITEMS.filter((item) => item.id === 'new')
     : CHAT_NAV_ITEMS
-  const user = threads[0]?.user
+  const handleSettings = () => {
+    if (isMobile) setMobileOpen(false)
+    onSettings()
+  }
 
   return (
     <>
@@ -167,20 +173,18 @@ function SidebarContents({
       </Sidebar.Content>
 
       <Sidebar.Footer>
-        <div className="flex items-center gap-3 px-1 py-1">
-          <Avatar className="size-9 shrink-0">
-            <Avatar.Image alt={user?.name ?? '用户'} src={user?.avatar} />
-            <Avatar.Fallback>DH</Avatar.Fallback>
-          </Avatar>
-          <div className="flex min-w-0 flex-col" data-sidebar="label">
-            <span className="text-sm leading-tight font-medium text-foreground">
-              {user?.name ?? 'Darnell Howe'}
-            </span>
-            <span className="text-xs leading-tight font-medium text-muted">
-              {user?.email ?? 'darnell@email.com'}
-            </span>
-          </div>
-        </div>
+        <Sidebar.Menu aria-label="应用设置">
+          <Sidebar.MenuItem
+            id={`${idPrefix}settings`}
+            textValue="设置"
+            onAction={handleSettings}
+          >
+            <Sidebar.MenuIcon>
+              <Gear className="size-4" />
+            </Sidebar.MenuIcon>
+            <Sidebar.MenuLabel>设置</Sidebar.MenuLabel>
+          </Sidebar.MenuItem>
+        </Sidebar.Menu>
       </Sidebar.Footer>
     </>
   )

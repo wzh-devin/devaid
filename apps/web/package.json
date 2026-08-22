@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "node --experimental-strip-types src/app/chat-route.test.mjs",
+    "test": "node --test --experimental-strip-types src/app/chat-route.test.mjs src/features/settings/provider-models.test.mjs",
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview"
