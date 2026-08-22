@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @devaid/web dev",
     "build": "pnpm --filter @devaid/web build",
+    "test": "pnpm --filter @devaid/web test",
     "typecheck": "pnpm --filter @devaid/web typecheck",
     "lint": "pnpm --filter @devaid/web lint",
     "preview": "pnpm --filter @devaid/web preview"

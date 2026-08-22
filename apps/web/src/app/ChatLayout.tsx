@@ -1,29 +1,36 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { AppLayout } from '@agile-avocation/ui-pro/app-layout'
-import type { ChatNavItemId, ChatThread } from '../features/chat/chat-data.ts'
+import type {
+  ChatActivePage,
+  ChatThread,
+} from '../features/chat/chat-data.ts'
 import { CHAT_THREADS } from '../features/chat/chat-data.ts'
 import { ChatNavbar } from '../features/chat/components/ChatNavbar.tsx'
 import { ChatSearchDialog } from '../features/chat/components/ChatSearchDialog.tsx'
 import { ChatSidebar } from '../features/chat/components/ChatSidebar.tsx'
 
 interface ChatLayoutProps {
+  activePage: ChatActivePage
   children: ReactNode
+  onNavigate: (path: string, draft?: string) => void
 }
 
 /** 组合聊天应用外壳，并统一管理搜索弹窗与全局快捷键。 */
-export function ChatLayout({ children }: ChatLayoutProps) {
+export function ChatLayout({
+  activePage,
+  children,
+  onNavigate,
+}: ChatLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
-  const handleNavAction = useCallback((id: ChatNavItemId) => {
-    if (id === 'new' && window.location.pathname !== '/new') {
-      window.history.pushState({}, '', '/new')
-    }
-  }, [])
-
-  const handleThreadSelect = useCallback((_thread: ChatThread) => {
-    setIsSearchOpen(false)
-  }, [])
+  const handleThreadSelect = useCallback(
+    (thread: ChatThread) => {
+      setIsSearchOpen(false)
+      onNavigate(`/${thread.id}`)
+    },
+    [onNavigate],
+  )
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -42,13 +49,18 @@ export function ChatLayout({ children }: ChatLayoutProps) {
 
   return (
     <AppLayout
+      navigate={onNavigate}
       sidebarCollapsible="offcanvas"
-      navbar={<ChatNavbar onSearch={() => setIsSearchOpen(true)} />}
+      navbar={
+        <ChatNavbar
+          activePage={activePage}
+          onSearch={() => setIsSearchOpen(true)}
+        />
+      }
       sidebar={
         <ChatSidebar
+          activePage={activePage}
           threads={CHAT_THREADS}
-          onAction={handleNavAction}
-          onThreadSelect={handleThreadSelect}
         />
       }
     >

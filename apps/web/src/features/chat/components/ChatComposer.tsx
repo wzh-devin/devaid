@@ -19,6 +19,8 @@ export interface ChatSubmitPayload {
 }
 
 interface ChatComposerProps {
+  className?: string
+  initialModelId?: string
   value: string
   onSubmit?: (payload: ChatSubmitPayload) => void
   onValueChange: (value: string) => void
@@ -35,12 +37,14 @@ const revokeAttachmentUrl = (attachment: PendingAttachment) => {
 
 /** 管理消息草稿、模型、附件以及前端模拟发送状态。 */
 export function ChatComposer({
+  className,
+  initialModelId = CHAT_MODELS[0]?.id ?? 'gpt-5.4',
   onSubmit,
   onValueChange,
   value,
 }: ChatComposerProps) {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
-  const [modelId, setModelId] = useState(CHAT_MODELS[0]?.id ?? 'gpt-5.4')
+  const [modelId, setModelId] = useState(initialModelId)
   const [status, setStatus] = useState<ChatStatus>('ready')
   const attachmentsRef = useRef<PendingAttachment[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -124,7 +128,7 @@ export function ChatComposer({
 
   return (
     <PromptInput
-      className="w-full"
+      className={className ?? 'w-full'}
       status={status}
       value={value}
       variant="primary"
@@ -158,7 +162,7 @@ export function ChatComposer({
                     </span>
                     <Button
                       isIconOnly
-                      aria-label={`Remove attachment: ${attachment.file.name}`}
+                      aria-label={`移除附件：${attachment.file.name}`}
                       className="-mr-1 size-6 min-w-6"
                       size="sm"
                       variant="ghost"
@@ -172,7 +176,10 @@ export function ChatComposer({
             </PromptInput.Attachments>
           ) : null}
 
-          <PromptInput.TextArea placeholder="What do you want to know?" />
+          <PromptInput.TextArea
+            aria-label="消息输入"
+            placeholder="你想了解什么？"
+          />
         </PromptInput.Content>
 
         <PromptInput.Toolbar>
@@ -188,16 +195,16 @@ export function ChatComposer({
               onChange={handleFileInputChange}
             />
             <PromptInput.Action
-              aria-label="Attach file"
+              aria-label="添加附件"
               isDisabled={isGenerating}
-              tooltip="Attach file"
+              tooltip="添加附件"
               onPress={() => fileInputRef.current?.click()}
             >
               <Paperclip className="size-4" />
             </PromptInput.Action>
 
             <Select
-              aria-label="Model"
+              aria-label="模型"
               isDisabled={isGenerating}
               selectedKey={modelId}
               variant="secondary"
@@ -227,7 +234,7 @@ export function ChatComposer({
 
           <PromptInput.ToolbarEnd>
             <PromptInput.Send
-              aria-label={isGenerating ? 'Stop generation' : 'Send message'}
+              aria-label={isGenerating ? '停止生成' : '发送消息'}
               isDisabled={!canSend && !isGenerating}
             />
           </PromptInput.ToolbarEnd>
@@ -235,7 +242,7 @@ export function ChatComposer({
       </PromptInput.Shell>
 
       <PromptInput.Footer>
-        AI can make mistakes. Check important info.
+        AI 可能会出错，请核对重要信息。
       </PromptInput.Footer>
     </PromptInput>
   )
