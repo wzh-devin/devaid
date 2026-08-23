@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ListBox, Select } from '@heroui/react'
 
 interface SelectMenuOption {
@@ -10,6 +11,7 @@ interface SelectMenuProps {
   className?: string
   isDisabled?: boolean
   options: readonly SelectMenuOption[]
+  startContent?: ReactNode
   triggerClassName?: string
   value: string
   onChange: (value: string) => void
@@ -21,6 +23,7 @@ export function SelectMenu({
   isDisabled,
   onChange,
   options,
+  startContent,
   triggerClassName,
   value,
 }: SelectMenuProps) {
@@ -36,9 +39,16 @@ export function SelectMenu({
       }}
     >
       <Select.Trigger
-        className={`justify-between rounded-full ${triggerClassName ?? ''}`}
+        className={`justify-between rounded-full ${startContent ? 'pr-7' : ''} ${triggerClassName ?? ''}`}
       >
-        <Select.Value />
+        {startContent ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            {startContent}
+            <Select.Value />
+          </span>
+        ) : (
+          <Select.Value />
+        )}
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover className="min-w-56">

@@ -1,6 +1,6 @@
 import { AppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { Navbar } from '@agile-avocation/ui-pro/navbar'
-import { ArrowRightToSquare, Magnifier } from '@gravity-ui/icons'
+import { Magnifier } from '@gravity-ui/icons'
 import { Button, Kbd, Tooltip } from '@heroui/react'
 import type { ChatActivePage } from '../chat-data.ts'
 
@@ -64,12 +64,6 @@ export function ChatNavbar({ activePage, onSearch }: ChatNavbarProps) {
               </div>
             </Tooltip.Content>
           </Tooltip>
-          {isThread ? (
-            <Button className="hidden md:inline-flex" size="sm">
-              <ArrowRightToSquare className="size-4" />
-              分享
-            </Button>
-          ) : null}
         </div>
       </Navbar.Header>
     </Navbar>
