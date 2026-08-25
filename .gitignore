@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 dist
+!/packages/ui-pro/dist/
+!/packages/ui-pro/dist/**
 dist-ssr
 *.local
 
