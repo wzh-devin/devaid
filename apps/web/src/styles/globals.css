@@ -36,3 +36,9 @@ select,
 textarea {
   font: inherit;
 }
+
+@media (min-width: 769px) {
+  .chat-layout--thread .app-layout__header {
+    display: none;
+  }
+}

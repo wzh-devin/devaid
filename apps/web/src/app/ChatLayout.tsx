@@ -103,6 +103,9 @@ export function ChatLayout({
             value={{ onWorkspaceSelect, selectedWorkspaceId, workspaces }}
           >
             <AppLayout
+              className={
+                activePage.kind === 'thread' ? 'chat-layout--thread' : undefined
+              }
               navigate={onNavigate}
               sidebarCollapsible="icon"
               navbar={

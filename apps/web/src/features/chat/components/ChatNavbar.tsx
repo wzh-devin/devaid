@@ -24,7 +24,7 @@ interface ChatNavbarProps {
   onSearch: () => void
 }
 
-/** 展示当前页面标题，并提供全局聊天搜索入口。 */
+/** 展示非会话页标题，并为移动端提供导航与聊天搜索入口。 */
 export function ChatNavbar({ activePage, onSearch }: ChatNavbarProps) {
   const isThread = activePage.kind === 'thread'
   const title = isThread
@@ -38,12 +38,14 @@ export function ChatNavbar({ activePage, onSearch }: ChatNavbarProps) {
     <Navbar maxWidth="full">
       <Navbar.Header>
         <AppLayout.MenuToggle aria-label="打开导航" />
-        <div className="flex min-w-0 flex-col">
-          <h1 className="truncate text-sm font-semibold text-foreground sm:text-base">
-            {title}
-          </h1>
-          <span className="truncate text-xs text-muted">{subtitle}</span>
-        </div>
+        {isThread ? null : (
+          <div className="flex min-w-0 flex-col">
+            <h1 className="truncate text-sm font-semibold text-foreground sm:text-base">
+              {title}
+            </h1>
+            <span className="truncate text-xs text-muted">{subtitle}</span>
+          </div>
+        )}
         <Navbar.Spacer />
         <div className="flex items-center gap-2">
           <Tooltip delay={0}>

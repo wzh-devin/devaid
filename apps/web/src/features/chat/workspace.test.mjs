@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   findWorkspaceByDirectory,
   findWorkspaceByThreadId,
+  resolveComposerWorkspace,
 } from './workspace-data.ts'
 
 const assetsHandle = {
@@ -38,5 +39,14 @@ assert.equal(
   }),
   undefined,
 )
+
+assert.deepEqual(resolveComposerWorkspace('assets'), {
+  isSelectable: true,
+  workspaceId: 'assets',
+})
+assert.deepEqual(resolveComposerWorkspace('mine-knowledge', 'assets'), {
+  isSelectable: false,
+  workspaceId: 'assets',
+})
 
 console.log('workspace directory checks passed')

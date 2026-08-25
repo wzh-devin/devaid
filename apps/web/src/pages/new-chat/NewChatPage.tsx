@@ -1,6 +1,10 @@
+import { useState } from 'react'
 import { PromptSuggestion } from '@agile-avocation/ui-pro/prompt-suggestion'
 import { SUGGESTED_PROMPTS } from '../../features/chat/chat-data.ts'
-import { ChatComposer } from '../../features/chat/components/ChatComposer.tsx'
+import {
+  ChatComposer,
+  type ChatSubmitPayload,
+} from '../../features/chat/components/ChatComposer.tsx'
 
 interface NewChatPageProps {
   draft: string
@@ -9,6 +13,15 @@ interface NewChatPageProps {
 
 /** 组合 New Chat 欢迎内容、建议词与消息输入区。 */
 export function NewChatPage({ draft, onDraftChange }: NewChatPageProps) {
+  const [fixedWorkspaceId, setFixedWorkspaceId] = useState<string>()
+
+  /** 首次有效发送后固定工作区，后续提交不再允许切换。 */
+  const handleSubmit = ({ workspaceId }: ChatSubmitPayload) => {
+    setFixedWorkspaceId((currentWorkspaceId) =>
+      currentWorkspaceId === undefined ? workspaceId : currentWorkspaceId,
+    )
+  }
+
   return (
     <div className="flex h-[calc(100svh-var(--chat-navbar-height,56px))] flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -38,7 +51,12 @@ export function NewChatPage({ draft, onDraftChange }: NewChatPageProps) {
 
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
-          <ChatComposer value={draft} onValueChange={onDraftChange} />
+          <ChatComposer
+            fixedWorkspaceId={fixedWorkspaceId}
+            value={draft}
+            onSubmit={handleSubmit}
+            onValueChange={onDraftChange}
+          />
         </div>
       </div>
     </div>

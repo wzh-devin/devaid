@@ -38,6 +38,15 @@ export const findWorkspaceByThreadId = (
   threadId: string,
 ) => workspaces.find((workspace) => workspace.threadIds.includes(threadId))
 
+/** 固定工作区存在时锁定 Composer，否则沿用当前可选工作区。 */
+export const resolveComposerWorkspace = (
+  selectedWorkspaceId: string,
+  fixedWorkspaceId?: string,
+) => ({
+  isSelectable: fixedWorkspaceId === undefined,
+  workspaceId: fixedWorkspaceId ?? selectedWorkspaceId,
+})
+
 /** 按浏览器目录句柄识别已经添加的真实工作区。 */
 export const findWorkspaceByDirectory = async (
   workspaces: readonly ChatWorkspace[],

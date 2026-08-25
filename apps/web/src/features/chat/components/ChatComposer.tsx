@@ -44,6 +44,7 @@ import {
   type ComposerMenuMode,
 } from '../composer-capabilities.ts'
 import { useChatWorkspace } from '../workspace-context.ts'
+import { resolveComposerWorkspace } from '../workspace-data.ts'
 import { ComposerCapabilityMenu } from './ComposerCapabilityMenu.tsx'
 import { ComposerContextBar } from './ComposerContextBar.tsx'
 
@@ -71,6 +72,7 @@ export interface ChatSubmitPayload {
 
 interface ChatComposerProps {
   className?: string
+  fixedWorkspaceId?: string
   initialModelId?: string
   value: string
   onSubmit?: (payload: ChatSubmitPayload) => void
@@ -95,6 +97,7 @@ const revokeAttachmentUrl = (attachment: PendingAttachment) => {
 /** 管理消息草稿、模型、附件以及前端模拟发送状态。 */
 export function ChatComposer({
   className,
+  fixedWorkspaceId,
   initialModelId = 'gpt-5.4',
   onSubmit,
   onValueChange,
@@ -111,6 +114,10 @@ export function ChatComposer({
   const { mcpServers, openPluginSettings, skills } = usePluginSettings()
   const { onWorkspaceSelect, selectedWorkspaceId, workspaces } =
     useChatWorkspace()
+  const composerWorkspace = resolveComposerWorkspace(
+    selectedWorkspaceId,
+    fixedWorkspaceId,
+  )
   const attachmentsRef = useRef<PendingAttachment[]>([])
   const composerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -203,7 +210,7 @@ export function ChatComposer({
       message,
       modelId: selectedModel.id,
       permission,
-      workspaceId: selectedWorkspaceId,
+      workspaceId: composerWorkspace.workspaceId,
     })
 
     attachments.forEach(revokeAttachmentUrl)
@@ -401,17 +408,19 @@ export function ChatComposer({
 
   return (
     <div ref={composerRef} className={className ?? 'w-full'}>
-      <div className="mb-3 flex h-8 items-center px-2">
-        <SelectMenu
-          ariaLabel="工作区"
-          className="max-w-full"
-          options={workspaces}
-          startContent={<Folder className="size-4 shrink-0" />}
-          triggerClassName="h-8 max-w-56 bg-transparent pl-1 text-sm hover:bg-surface-secondary"
-          value={selectedWorkspaceId}
-          onChange={onWorkspaceSelect}
-        />
-      </div>
+      {composerWorkspace.isSelectable ? (
+        <div className="mb-3 flex h-8 items-center px-2">
+          <SelectMenu
+            ariaLabel="工作区"
+            className="max-w-full"
+            options={workspaces}
+            startContent={<Folder className="size-4 shrink-0" />}
+            triggerClassName="h-8 max-w-56 bg-transparent pl-1 text-sm hover:bg-surface-secondary"
+            value={composerWorkspace.workspaceId}
+            onChange={onWorkspaceSelect}
+          />
+        </div>
+      ) : null}
 
       <PromptInput
         className="w-full"
