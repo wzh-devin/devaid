@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { ToolPartState } from '@agile-avocation/ui-pro/chat-tool'
 import { Compass, CopyPicture, SquarePlus } from '@gravity-ui/icons'
+import type { ComposerContextItem } from './composer-capabilities.ts'
 import { SHOWCASE_THREAD } from './showcase-thread.ts'
 
 export type ChatNavItemId = 'new' | 'library' | 'explore'
@@ -9,11 +10,6 @@ export interface ChatNavItem {
   href: string
   icon: ComponentType<{ className?: string }>
   id: ChatNavItemId
-  label: string
-}
-
-export interface ChatModel {
-  id: string
   label: string
 }
 
@@ -81,6 +77,7 @@ export type ChatAssistantStatus = 'complete' | 'skeleton' | 'streaming'
 export interface ChatMessage {
   actions?: 'full' | 'minimal'
   attachments?: readonly ChatMessageAttachment[]
+  contextItems?: readonly ComposerContextItem[]
   avatar?: {
     alt?: string
     fallback?: string
@@ -127,13 +124,6 @@ export const CHAT_NAV_ITEMS: readonly ChatNavItem[] = [
   { href: '/new', icon: SquarePlus, id: 'new', label: '新建对话' },
   { href: '/library', icon: CopyPicture, id: 'library', label: '资料库' },
   { href: '/explore', icon: Compass, id: 'explore', label: '探索' },
-] as const
-
-export const CHAT_MODELS: readonly ChatModel[] = [
-  { id: 'gpt-5.4', label: 'GPT-5.4' },
-  { id: 'claude-4.6-opus', label: 'Claude 4.6 Opus' },
-  { id: 'claude-4.6-sonnet', label: 'Claude 4.6 Sonnet' },
-  { id: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro' },
 ] as const
 
 export const CHAT_SEARCH_MODES: readonly ChatSearchMode[] = [

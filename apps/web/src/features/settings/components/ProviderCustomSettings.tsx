@@ -11,15 +11,9 @@ import { SelectMenu } from '../../../components/ui/SelectMenu.tsx'
 import {
   API_PROTOCOL_OPTIONS,
   type ApiProtocol,
-  type ProviderModelConfig,
+  type ProviderConfiguration,
 } from '../provider-models.ts'
 import { ProviderModelCatalog } from './ProviderModelCatalog.tsx'
-
-export interface ProviderConfiguration {
-  apiProtocol?: ApiProtocol
-  baseUrl: string
-  models: ProviderModelConfig[]
-}
 
 interface ProviderCustomSettingsProps {
   providerId: string

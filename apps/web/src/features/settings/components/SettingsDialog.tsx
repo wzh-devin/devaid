@@ -3,9 +3,8 @@ import {
   Database,
   Display,
   Gear,
-  GraphNode,
   Moon,
-  Sliders,
+  Puzzle,
   Sun,
 } from '@gravity-ui/icons'
 import {
@@ -15,9 +14,18 @@ import {
   ToggleButtonGroup,
 } from '@heroui/react'
 import { SelectMenu } from '../../../components/ui/SelectMenu.tsx'
+import {
+  PERMISSION_OPTIONS,
+  type PermissionId,
+  usePermissionSettings,
+} from '../permission-settings-context.tsx'
+import type { PluginSettingsTab } from '../plugin-settings-context.tsx'
 import { ModelsSettingsSection } from './ModelsSettingsSection.tsx'
+import { PluginsSettingsSection } from './PluginsSettingsSection.tsx'
 
 interface SettingsDialogProps {
+  initialPluginTab?: PluginSettingsTab
+  initialSection?: SettingsSection
   isOpen: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -25,8 +33,7 @@ interface SettingsDialogProps {
 const SETTINGS_SECTIONS = [
   { id: 'general', label: '通用设置', icon: Gear },
   { id: 'models', label: '模型', icon: Database },
-  { id: 'plugins', label: '插件', icon: Sliders },
-  { id: 'agent', label: 'Agent 预设', icon: GraphNode },
+  { id: 'plugins', label: '插件', icon: Puzzle },
 ] as const
 
 const APPEARANCE_OPTIONS = [
@@ -35,23 +42,22 @@ const APPEARANCE_OPTIONS = [
   { id: 'system', label: '跟随系统', icon: Display },
 ] as const
 
-type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id']
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id']
 
 /** 展示应用级本地设置；当前选择只保留在页面会话中。 */
 export function SettingsDialog({
+  initialPluginTab = 'skills',
+  initialSection = 'general',
   isOpen,
   onOpenChange,
 }: SettingsDialogProps) {
   const [activeSection, setActiveSection] =
-    useState<SettingsSection>('general')
-  const [agentPreset, setAgentPreset] = useState('standard')
-  const [permission, setPermission] = useState('workspace-write')
+    useState<SettingsSection>(initialSection)
+  const [pluginTab, setPluginTab] =
+    useState<PluginSettingsTab>(initialPluginTab)
+  const { permission, setPermission } = usePermissionSettings()
   const [language, setLanguage] = useState('zh-CN')
   const [appearance, setAppearance] = useState('system')
-  const [enterBehavior, setEnterBehavior] = useState('queue')
-  const activeLabel = SETTINGS_SECTIONS.find(
-    (section) => section.id === activeSection,
-  )?.label
 
   return (
     <Modal.Backdrop
@@ -103,21 +109,13 @@ export function SettingsDialog({
               {activeSection === 'general' ? (
                 <div className="mx-auto max-w-2xl">
                   <SettingsSelect
-                    description="对此后新建的会话生效；运行中的会话保持创建时的预设。"
-                    label="Agent 预设"
-                    options={[{ id: 'standard', label: '标准模式' }]}
-                    value={agentPreset}
-                    onChange={setAgentPreset}
-                  />
-
-                  <SettingsSelect
                     description="选择新会话默认使用的工作区权限。"
                     label="权限"
-                    options={[
-                      { id: 'workspace-write', label: 'Workspace Write' },
-                    ]}
+                    options={PERMISSION_OPTIONS}
                     value={permission}
-                    onChange={setPermission}
+                    onChange={(value) =>
+                      setPermission(value as PermissionId)
+                    }
                   />
 
                   <SettingsSelect
@@ -127,7 +125,7 @@ export function SettingsDialog({
                     onChange={setLanguage}
                   />
 
-                  <section className="border-b border-divider py-6 first:pt-0">
+                  <section className="py-6 first:pt-0">
                     <h3 className="text-base font-medium text-foreground">
                       外观
                     </h3>
@@ -159,18 +157,6 @@ export function SettingsDialog({
                       })}
                     </ToggleButtonGroup>
                   </section>
-
-                  <SettingsSelect
-                    description="仅在智能体运行时生效；Cmd/Ctrl+Enter 使用另一行为。"
-                    label="繁忙时 Enter 键行为"
-                    options={[{ id: 'queue', label: '排队发送' }]}
-                    value={enterBehavior}
-                    onChange={setEnterBehavior}
-                  />
-
-                  <p className="pt-4 text-xs leading-5 text-muted">
-                    当前设置仅在本次页面会话中生效。
-                  </p>
                 </div>
               ) : null}
 
@@ -178,16 +164,12 @@ export function SettingsDialog({
                 <ModelsSettingsSection />
               </div>
 
-              {activeSection === 'plugins' || activeSection === 'agent' ? (
-                <div className="flex min-h-64 items-center justify-center">
-                  <div className="text-center">
-                    <h2 className="text-lg font-semibold text-foreground">
-                      {activeLabel}
-                    </h2>
-                    <p className="mt-2 text-sm text-muted">暂未配置</p>
-                  </div>
-                </div>
-              ) : null}
+              <div hidden={activeSection !== 'plugins'}>
+                <PluginsSettingsSection
+                  activeTab={pluginTab}
+                  onTabChange={setPluginTab}
+                />
+              </div>
             </div>
           </Modal.Body>
         </Modal.Dialog>

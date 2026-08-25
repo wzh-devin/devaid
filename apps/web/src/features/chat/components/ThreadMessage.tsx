@@ -13,6 +13,7 @@ import type {
   ChatMessageTool,
 } from '../chat-data.ts'
 import { ChatAttachmentList } from './ChatAttachmentList.tsx'
+import { ComposerContextBar } from './ComposerContextBar.tsx'
 import { MessageActions } from './MessageActions.tsx'
 
 interface ThreadMessageProps {
@@ -112,6 +113,12 @@ export function ThreadMessage({ message }: ThreadMessageProps) {
   if (message.role === 'user') {
     return (
       <ChatMessagePrimitive.User>
+        {message.contextItems?.length ? (
+          <ComposerContextBar
+            className="mb-2 justify-end"
+            items={message.contextItems}
+          />
+        ) : null}
         {message.attachments?.length ? (
           <ChatAttachmentList
             attachments={message.attachments}

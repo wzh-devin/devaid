@@ -283,7 +283,7 @@ function SidebarContents({
                       <Button
                         fullWidth
                         aria-expanded={isExpanded}
-                        className="h-9 min-h-9 justify-start gap-4 rounded-lg pr-2 pl-3 font-normal"
+                        className="h-9 min-h-9 justify-start gap-4 rounded-2xl pr-2 pl-3 font-normal"
                         size="sm"
                         variant="ghost"
                         onPress={() => onWorkspaceToggle(workspace.id)}

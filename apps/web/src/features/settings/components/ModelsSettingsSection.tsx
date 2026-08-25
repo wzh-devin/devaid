@@ -12,21 +12,15 @@ import {
   TextField,
 } from '@heroui/react'
 import { SelectMenu } from '../../../components/ui/SelectMenu.tsx'
+import { useModelSettings } from '../model-settings-context.tsx'
 import {
   API_PROTOCOL_OPTIONS,
   type ApiProtocol,
-} from '../provider-models.ts'
-import {
-  ProviderCustomSettings,
+  type ModelProvider,
   type ProviderConfiguration,
-} from './ProviderCustomSettings.tsx'
+} from '../provider-models.ts'
+import { ProviderCustomSettings } from './ProviderCustomSettings.tsx'
 import { ProviderModelCatalog } from './ProviderModelCatalog.tsx'
-
-interface ModelProvider extends ProviderConfiguration {
-  id: string
-  name: string
-  isConfigured: boolean
-}
 
 type ActiveEditor =
   | { type: 'edit'; providerId: string }
@@ -41,16 +35,6 @@ const PRESET_PROVIDERS = [
   { id: 'google', label: 'google', name: 'Google Gemini' },
 ] as const
 
-const INITIAL_PROVIDERS: ModelProvider[] = [
-  {
-    id: 'deepseek-official',
-    name: 'DeepSeek',
-    isConfigured: true,
-    baseUrl: '',
-    models: [],
-  },
-]
-
 const DEFAULT_API_PROTOCOL: ApiProtocol = 'openai-completions'
 
 const createEmptyConfiguration = (
@@ -63,8 +47,7 @@ const createEmptyConfiguration = (
 
 /** 管理当前页面会话中的模型提供方配置。 */
 export function ModelsSettingsSection() {
-  const [providers, setProviders] =
-    useState<ModelProvider[]>(INITIAL_PROVIDERS)
+  const { providers, setProviders } = useModelSettings()
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null)
   const [presetProviderId, setPresetProviderId] = useState<string>(
     PRESET_PROVIDERS[0].id,

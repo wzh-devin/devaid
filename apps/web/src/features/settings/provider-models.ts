@@ -11,12 +11,38 @@ export const API_PROTOCOL_OPTIONS = [
 
 export type ApiProtocol = (typeof API_PROTOCOL_OPTIONS)[number]['id']
 
+export interface ProviderConfiguration {
+  apiProtocol?: ApiProtocol
+  baseUrl: string
+  models: ProviderModelConfig[]
+}
+
+export interface ModelProvider extends ProviderConfiguration {
+  id: string
+  isConfigured: boolean
+  name: string
+}
+
+export interface SelectableModel {
+  id: string
+  key: string
+  name: string
+}
+
+export interface SelectableModelGroup {
+  id: string
+  models: SelectableModel[]
+  name: string
+}
+
 const BUILT_IN_MODELS: Record<string, readonly ProviderModelConfig[]> = {
   'deepseek-official': [
-    { id: 'deepseek-chat', name: 'DeepSeek Chat' },
-    { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' },
+    { id: 'deepseek-v4-flash', name: 'deepseek-v4-flash' },
+    { id: 'deepseek-v4-pro', name: 'deepseek-v4-pro' },
   ],
   openai: [
+    { id: 'gpt-5.6-sol', name: 'gpt-5.6 sol' },
+    { id: 'gpt-5.5', name: 'gpt-5.5' },
     { id: 'gpt-5.4', name: 'GPT-5.4' },
     { id: 'gpt-5-mini', name: 'GPT-5 mini' },
   ],
@@ -36,6 +62,65 @@ const BUILT_IN_MODELS: Record<string, readonly ProviderModelConfig[]> = {
 
 export function getBuiltInModels(providerId: string): ProviderModelConfig[] {
   return BUILT_IN_MODELS[providerId]?.map((model) => ({ ...model })) ?? []
+}
+
+/** 创建供设置页和聊天模型菜单共用的页面会话初始配置。 */
+export const createInitialModelProviders = (): ModelProvider[] => [
+  {
+    id: 'deepseek-official',
+    name: 'DeepSeek',
+    isConfigured: true,
+    baseUrl: '',
+    models: getBuiltInModels('deepseek-official'),
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    isConfigured: true,
+    baseUrl: '',
+    models: getBuiltInModels('openai'),
+  },
+]
+
+/** 将已配置提供方转换成可供二级菜单展示的去重模型分组。 */
+export const getSelectableModelGroups = (
+  providers: readonly ModelProvider[],
+): SelectableModelGroup[] => {
+  const knownKeys = new Set<string>()
+
+  return providers.flatMap((provider) => {
+    if (!provider.isConfigured) return []
+
+    const models = provider.models.flatMap((model) => {
+      const id = model.id.trim()
+      const key = `${provider.id}:${id}`
+      if (!id || knownKeys.has(key)) return []
+
+      knownKeys.add(key)
+      return [{ id, key, name: model.name.trim() || id }]
+    })
+
+    return models.length
+      ? [{ id: provider.id, models, name: provider.name }]
+      : []
+  })
+}
+
+/** 保留有效选择，否则按初始模型 ID 或首个可用模型回退。 */
+export const resolveModelSelectionKey = (
+  groups: readonly SelectableModelGroup[],
+  currentKey: string,
+  initialModelId: string,
+) => {
+  const models = groups.flatMap((group) => group.models)
+  const currentModel = models.find((model) => model.key === currentKey)
+  if (currentModel) return currentModel.key
+
+  return currentKey
+    ? (models[0]?.key ?? '')
+    : (models.find((model) => model.id === initialModelId)?.key ??
+        models[0]?.key ??
+        '')
 }
 
 export function mergeProviderModels(
