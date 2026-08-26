@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@heroui/styles/css";
 @import "@agile-avocation/ui-pro/css";
+@import "tw-shimmer";
 
 @source "../**/*.{ts,tsx}";
 

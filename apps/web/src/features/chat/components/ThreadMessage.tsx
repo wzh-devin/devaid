@@ -1,12 +1,27 @@
-import type { ComponentProps } from 'react'
-import { ChainOfThought } from '@agile-avocation/ui-pro/chain-of-thought'
+import type { ComponentProps, ElementType } from 'react'
 import { ChatLoader } from '@agile-avocation/ui-pro/chat-loader'
 import { ChatMessage as ChatMessagePrimitive } from '@agile-avocation/ui-pro/chat-message'
 import { ChatSource, ChatSources } from '@agile-avocation/ui-pro/chat-source'
-import { ChatTool, ChatToolGroup } from '@agile-avocation/ui-pro/chat-tool'
 import { CodeBlock } from '@agile-avocation/ui-pro/code-block'
 import { Markdown, markdownVariants } from '@agile-avocation/ui-pro/markdown'
 import { TextShimmer } from '@agile-avocation/ui-pro/text-shimmer'
+import {
+  FileTextIcon,
+  Globe2Icon,
+  PencilIcon,
+  SearchIcon,
+  SparklesIcon,
+  TerminalIcon,
+  WrenchIcon,
+} from 'lucide-react'
+import {
+  ToolFallbackArgs,
+  ToolFallbackContent,
+  ToolFallbackError,
+  ToolFallbackResult,
+  ToolFallbackRoot,
+  ToolFallbackTrigger,
+} from '../../../components/assistant-ui/tool-fallback.tsx'
 import type {
   ChatMessage,
   ChatMessageSource,
@@ -14,13 +29,30 @@ import type {
 } from '../chat-data.ts'
 import { ChatAttachmentList } from './ChatAttachmentList.tsx'
 import { ComposerContextBar } from './ComposerContextBar.tsx'
+import type { ApprovalDecision } from './ApprovalPrompt.tsx'
 import { MessageActions } from './MessageActions.tsx'
+import { ReasoningPanel } from './ReasoningPanel.tsx'
+import { getToolArgsText, getToolStatus } from '../tool-display.ts'
 
 interface ThreadMessageProps {
+  approvalDecisions?: Readonly<Record<string, ApprovalDecision>>
   message: ChatMessage
 }
 
 const markdownSlots = markdownVariants()
+
+const toolIconMap: Record<
+  NonNullable<ChatMessageTool['kind']>,
+  ElementType
+> = {
+  browser: Globe2Icon,
+  command: TerminalIcon,
+  edit: PencilIcon,
+  read: FileTextIcon,
+  search: SearchIcon,
+  skill: SparklesIcon,
+  tool: WrenchIcon,
+}
 
 /** 保留 UI Pro Markdown 渲染，仅将代码复制按钮的无障碍名称改为中文。 */
 const LOCALIZED_MARKDOWN_COMPONENTS = {
@@ -72,44 +104,58 @@ const renderSource = (source: ChatMessageSource, key: string) => {
   return <ChatSource key={key} sourceType="document" title={source.title} />
 }
 
-/** 将工具状态适配为普通工具调用或待审批工具调用。 */
-const renderTool = (tool: ChatMessageTool, prefix: string, key: string) => {
+/** 将工具数据适配为官方普通展示或现有待审批展示。 */
+const renderTool = (
+  tool: ChatMessageTool,
+  key: string,
+  approvalDecision?: ApprovalDecision,
+) => {
   if (tool.state === 'requires-action') {
+    const approvalLabel =
+      approvalDecision === 'approve-once'
+        ? '已允许一次'
+        : approvalDecision === 'approve-thread'
+          ? '已允许此对话'
+          : approvalDecision === 'reject'
+            ? '已拒绝'
+            : '等待审批'
+
     return (
-      <ChatTool
+      <div
         key={key}
-        defaultExpanded
-        approveLabel="批准"
-        argsText={tool.argsText}
-        input={tool.input}
-        output={tool.output}
-        rejectLabel="拒绝"
-        state={tool.state}
-        toolName={tool.toolName}
-        triggerPrefix="需要审批 "
-        onApprove={() => undefined}
-        onReject={() => undefined}
-      />
+        className="flex min-h-7 items-center gap-2 text-sm text-muted"
+      >
+        <WrenchIcon className="size-4 shrink-0" />
+        <span>
+          {approvalLabel} · {tool.label ?? tool.toolName}
+        </span>
+      </div>
     )
   }
 
+  const status = getToolStatus(tool)
   return (
-    <ChatTool
-      key={key}
-      argsText={tool.argsText}
-      defaultExpanded={tool.state === 'input-streaming'}
-      errorText={tool.errorText}
-      input={tool.input}
-      output={tool.output}
-      state={tool.state}
-      toolName={tool.toolName}
-      triggerPrefix={`${prefix} `}
-    />
+    <ToolFallbackRoot key={key} defaultOpen={status.type === 'running'}>
+      <ToolFallbackTrigger
+        icon={toolIconMap[tool.kind ?? 'tool']}
+        label={tool.label}
+        status={status}
+        toolName={tool.toolName}
+      />
+      <ToolFallbackContent>
+        <ToolFallbackError status={status} />
+        <ToolFallbackArgs argsText={getToolArgsText(tool)} />
+        <ToolFallbackResult result={tool.output} />
+      </ToolFallbackContent>
+    </ToolFallbackRoot>
   )
 }
 
 /** 根据 mock 消息契约渲染文本、富媒体、推理、工具与来源状态。 */
-export function ThreadMessage({ message }: ThreadMessageProps) {
+export function ThreadMessage({
+  approvalDecisions,
+  message,
+}: ThreadMessageProps) {
   if (message.role === 'user') {
     return (
       <ChatMessagePrimitive.User>
@@ -145,42 +191,15 @@ export function ThreadMessage({ message }: ThreadMessageProps) {
 
       <ChatMessagePrimitive.Body>
         {message.reasoning ? (
-          <ChainOfThought
-            defaultExpanded={message.reasoning.defaultExpanded ?? false}
-          >
-            <ChainOfThought.Trigger>
-              {message.reasoning.trigger}
-            </ChainOfThought.Trigger>
-            <ChainOfThought.Content>
-              <ChainOfThought.Steps>
-                {message.reasoning.steps.map((step) => (
-                  <ChainOfThought.Step key={step.label} label={step.label}>
-                    {step.content}
-                  </ChainOfThought.Step>
-                ))}
-              </ChainOfThought.Steps>
-            </ChainOfThought.Content>
-          </ChainOfThought>
-        ) : null}
-
-        {message.toolGroup ? (
-          <ChatToolGroup
-            active={message.toolGroup.active}
-            defaultExpanded={false}
-          >
-            <ChatToolGroup.Trigger>
-              {message.toolGroup.label}
-            </ChatToolGroup.Trigger>
-            <ChatToolGroup.Content>
-              {message.toolGroup.tools.map((tool, index) =>
-                renderTool(tool, '已使用', `${tool.toolName}-${index}`),
-              )}
-            </ChatToolGroup.Content>
-          </ChatToolGroup>
+          <ReasoningPanel reasoning={message.reasoning} />
         ) : null}
 
         {message.tools?.map((tool, index) =>
-          renderTool(tool, '已使用', `${tool.toolName}-${index}`),
+          renderTool(
+            tool,
+            `${tool.toolName}-${index}`,
+            approvalDecisions?.[`${message.id}:${index}`],
+          ),
         )}
 
         {message.status === 'streaming' ? (

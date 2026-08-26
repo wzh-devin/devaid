@@ -3,8 +3,13 @@ import { AppLayout, useAppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { ChatConversation } from '@agile-avocation/ui-pro/chat-conversation'
 import { Tabs } from '@heroui/react'
 import type { ChatThread } from '../../features/chat/chat-data.ts'
+import {
+  type ApprovalDecision,
+  ApprovalPrompt,
+} from '../../features/chat/components/ApprovalPrompt.tsx'
 import { ChatComposer } from '../../features/chat/components/ChatComposer.tsx'
 import { ThreadMessage } from '../../features/chat/components/ThreadMessage.tsx'
+import { findPendingToolApproval } from '../../features/chat/tool-display.ts'
 import { useChatWorkspace } from '../../features/chat/workspace-context.ts'
 import { findWorkspaceByThreadId } from '../../features/chat/workspace-data.ts'
 import { AgentTraceView } from '../../features/trace/index.ts'
@@ -16,6 +21,10 @@ interface ChatPageProps {
 /** 渲染 Recent 会话消息，并复用聊天输入区进行前端模拟发送。 */
 export function ChatPage({ thread }: ChatPageProps) {
   const [draft, setDraft] = useState('')
+  const [approvalDecisions, setApprovalDecisions] = useState<
+    Record<string, ApprovalDecision>
+  >({})
+  const [approvedThreadTools, setApprovedThreadTools] = useState<string[]>([])
   const appLayout = useAppLayout()
   const { selectedWorkspaceId, workspaces } = useChatWorkspace()
   const [fixedWorkspaceId] = useState(
@@ -23,6 +32,26 @@ export function ChatPage({ thread }: ChatPageProps) {
       findWorkspaceByThreadId(workspaces, thread.id)?.id ??
       selectedWorkspaceId,
   )
+  const pendingApproval = findPendingToolApproval(
+    thread.messages,
+    Object.keys(approvalDecisions),
+    approvedThreadTools,
+  )
+
+  /** 结束当前 mock 审批并继续显示下一个待审批工具。 */
+  const handleApprovalResolve = (decision: ApprovalDecision) => {
+    if (!pendingApproval) return
+    if (decision === 'approve-thread') {
+      setApprovedThreadTools((toolNames) => [
+        ...toolNames,
+        pendingApproval.tool.toolName,
+      ])
+    }
+    setApprovalDecisions((decisions) => ({
+      ...decisions,
+      [pendingApproval.key]: decision,
+    }))
+  }
 
   return (
     <div className="flex h-[calc(100svh-var(--chat-navbar-height,64px))] flex-col overflow-hidden min-[769px]:h-svh">
@@ -62,7 +91,11 @@ export function ChatPage({ thread }: ChatPageProps) {
             <ChatConversation.Content className="flex flex-col">
               <div className="mx-auto flex w-full max-w-[714px] flex-col gap-8 px-4 pt-10 pb-6">
                 {thread.messages.map((message) => (
-                  <ThreadMessage key={message.id} message={message} />
+                  <ThreadMessage
+                    key={message.id}
+                    approvalDecisions={approvalDecisions}
+                    message={message}
+                  />
                 ))}
               </div>
               <ChatConversation.ScrollAnchor />
@@ -80,12 +113,19 @@ export function ChatPage({ thread }: ChatPageProps) {
 
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
-          <ChatComposer
-            fixedWorkspaceId={fixedWorkspaceId}
-            initialModelId={thread.modelId}
-            value={draft}
-            onValueChange={setDraft}
-          />
+          {pendingApproval ? (
+            <ApprovalPrompt
+              tool={pendingApproval.tool}
+              onResolve={handleApprovalResolve}
+            />
+          ) : (
+            <ChatComposer
+              fixedWorkspaceId={fixedWorkspaceId}
+              initialModelId={thread.modelId}
+              value={draft}
+              onValueChange={setDraft}
+            />
+          )}
         </div>
       </div>
     </div>

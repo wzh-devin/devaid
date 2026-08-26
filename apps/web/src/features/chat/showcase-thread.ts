@@ -8,7 +8,7 @@ export type ChatStatus = "ready" | "streaming" | "submitted";
 
 - 仅负责展示的 Pro 组件
 - 消息数组和 SDK 接入由你的应用管理
-- 显式组合 \`ChatMessage\`、\`Markdown\` 和 \`ChainOfThought\``
+- 显式组合 \`ChatMessage\`、\`Markdown\` 和 \`Reasoning\``
 
 export const SHOWCASE_THREAD: ChatThread = {
   id: 'pro-ai-showcase',
@@ -37,6 +37,7 @@ export const SHOWCASE_THREAD: ChatThread = {
       markdown: SHOWCASE_MARKDOWN,
       reasoning: {
         defaultExpanded: false,
+        duration: 4,
         steps: [
           {
             content:
@@ -45,11 +46,10 @@ export const SHOWCASE_THREAD: ChatThread = {
           },
           {
             content:
-              '将推理界面映射到 ChainOfThought，并使用 TextShimmer 与 ChatLoader 表示加载状态。',
+              '将推理界面映射到 Reasoning，并使用 TextShimmer 与 ChatLoader 表示加载状态。',
             label: '规划',
           },
         ],
-        trigger: '思考了 4 秒',
       },
       role: 'assistant',
       showAvatar: true,
@@ -57,28 +57,29 @@ export const SHOWCASE_THREAD: ChatThread = {
     {
       id: 'showcase-5',
       role: 'user',
-      text: '展示流式、分组和需要审批的工具调用。',
+      text: '展示流式和需要审批的工具调用。',
     },
     {
       id: 'showcase-5b',
       role: 'assistant',
-      toolGroup: {
-        label: '2 次工具调用',
-        tools: [
-          {
-            argsText: '{"query":"HeroUI Pro 对话组件"}',
-            output: { hits: 12, top: 'ChatTool' },
-            state: 'output-available',
-            toolName: 'searchDocs',
-          },
-          {
-            argsText: '{"path":"/components/chat-tool"}',
-            output: { title: 'ChatTool', words: 420 },
-            state: 'output-available',
-            toolName: 'fetchPage',
-          },
-        ],
-      },
+      tools: [
+        {
+          argsText: '{\n  "query": "assistant-ui ToolFallback"\n}',
+          kind: 'search',
+          label: '已搜索 assistant-ui 工具组件文档',
+          output: { hits: 12, top: 'ToolFallback' },
+          state: 'output-available',
+          toolName: 'searchDocs',
+        },
+        {
+          argsText: '{\n  "path": "/docs/ui/tool-fallback"\n}',
+          kind: 'read',
+          label: '已读取 ToolFallback 页面',
+          output: { title: 'ToolFallback', words: 420 },
+          state: 'output-available',
+          toolName: 'fetchPage',
+        },
+      ],
     },
     {
       id: 'showcase-5c',
@@ -90,7 +91,13 @@ export const SHOWCASE_THREAD: ChatThread = {
       role: 'assistant',
       tools: [
         {
+          approval: {
+            description:
+              '将向 team@acme.com 发送主题为“上线进展”的邮件。',
+            title: '允许 AI 助手发送这封邮件吗？',
+          },
           argsText: '{"to":"team@acme.com","subject":"上线进展"}',
+          label: '发送邮件',
           state: 'requires-action',
           toolName: 'sendEmail',
         },
@@ -168,7 +175,7 @@ export const SHOWCASE_THREAD: ChatThread = {
   ],
   modelId: 'gpt-5.4',
   preview:
-    '展示 Markdown、ChainOfThought、ChatTool、来源、附件、加载状态和消息操作的示例对话。',
+    '展示 Markdown、Reasoning、工具调用、来源、附件、加载状态和消息操作的示例对话。',
   searchModeId: 'deep-search',
   title: 'Pro AI 组件展示',
   updatedAt: '刚刚',

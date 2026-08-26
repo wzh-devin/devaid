@@ -30,23 +30,23 @@ export interface ChatMessageReasoningStep {
 
 export interface ChatMessageReasoning {
   defaultExpanded?: boolean
+  duration?: number
   steps: readonly ChatMessageReasoningStep[]
-  trigger: string
 }
 
 export interface ChatMessageTool {
+  approval?: {
+    description?: string
+    title: string
+  }
   argsText?: string
   errorText?: string
   input?: unknown
+  kind?: 'browser' | 'command' | 'edit' | 'read' | 'search' | 'skill' | 'tool'
+  label?: string
   output?: unknown
   state: ToolPartState
   toolName: string
-}
-
-export interface ChatMessageToolGroup {
-  active?: boolean
-  label: string
-  tools: readonly ChatMessageTool[]
 }
 
 export type ChatMessageSource =
@@ -95,7 +95,6 @@ export interface ChatMessage {
   sources?: readonly ChatMessageSource[]
   status?: ChatAssistantStatus
   text?: string
-  toolGroup?: ChatMessageToolGroup
   tools?: readonly ChatMessageTool[]
 }
 
