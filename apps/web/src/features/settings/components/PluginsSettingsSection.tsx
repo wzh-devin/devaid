@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { CircleFill, Plus, TrashBin } from '@gravity-ui/icons'
+import { CircleFill, Code, Plus, Server, TrashBin } from '@gravity-ui/icons'
 import {
   Button,
   Card,
@@ -17,6 +17,8 @@ import {
   type PluginSettingsTab,
   usePluginSettings,
 } from '../plugin-settings-context.tsx'
+import { PluginListPanel } from './PluginListPanel.tsx'
+import { SettingsItemCard } from './SettingsItemCard.tsx'
 
 interface PluginsSettingsSectionProps {
   activeTab: PluginSettingsTab
@@ -28,15 +30,19 @@ const MCP_TRANSPORT_OPTIONS = [
   { id: 'http', label: 'Streamable HTTP' },
 ] as const
 
-type ActiveEditor = PluginSettingsTab | null
+type ActiveEditor = Exclude<PluginSettingsTab, 'plugins'> | null
 
-/** 管理当前页面会话中的技能与 MCP 模拟配置。 */
+/** 管理当前页面会话中的技能、MCP 与插件 Connector 模拟配置。 */
 export function PluginsSettingsSection({
   activeTab,
   onTabChange,
 }: PluginsSettingsSectionProps) {
-  const { mcpServers, setMcpServers, setSkills, skills } =
-    usePluginSettings()
+  const {
+    mcpServers,
+    setMcpServers,
+    setSkills,
+    skills,
+  } = usePluginSettings()
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null)
   const [mcpTransport, setMcpTransport] = useState<McpTransport>('stdio')
   const [searchQuery, setSearchQuery] = useState('')
@@ -101,7 +107,7 @@ export function PluginsSettingsSection({
         插件
       </h2>
       <p className="mt-3 text-sm leading-[22px] text-muted">
-        管理当前页面会话中的技能与 MCP。这里是界面模拟，不会连接真实服务。
+        管理当前页面会话中的技能、MCP 与插件 Connector。这里是界面模拟，不会连接真实服务。
       </p>
 
       <Tabs
@@ -124,10 +130,14 @@ export function PluginsSettingsSection({
               MCP
               <Tabs.Indicator />
             </Tabs.Tab>
+            <Tabs.Tab className="!w-auto px-3" id="plugins">
+              插件
+              <Tabs.Indicator />
+            </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
 
-        <Tabs.Panel className="pt-4" id="skills">
+        <Tabs.Panel className="pt-5" id="skills">
           <div className="flex flex-col gap-3">
             <TextField aria-label="搜索技能" value={searchQuery}>
               <Input
@@ -138,26 +148,12 @@ export function PluginsSettingsSection({
             </TextField>
 
             {visibleSkills.map((skill) => (
-              <Card
+              <SettingsItemCard
                 key={skill.id}
-                className="flex min-h-14 flex-row items-center justify-between gap-3 rounded-xl !border !border-solid !border-foreground/15 bg-surface px-3 py-2 shadow-none"
-                variant="transparent"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {skill.name}
-                    </span>
-                    <span className="shrink-0 text-xs text-muted">
-                      {skill.source}
-                    </span>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
-                    {skill.description}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
+                actions={
+                  <>
                   <Switch
+                    size="sm"
                     isSelected={skill.enabled}
                     onChange={(enabled) =>
                       setSkills((currentSkills) =>
@@ -195,8 +191,19 @@ export function PluginsSettingsSection({
                   >
                     <TrashBin className="size-3.5" />
                   </Button>
-                </div>
-              </Card>
+                  </>
+                }
+                description={skill.description}
+                icon={<Code aria-hidden className="size-4 text-muted" />}
+                title={
+                  <>
+                    <span className="truncate">{skill.name}</span>
+                    <span className="shrink-0 text-xs font-normal text-muted">
+                      {skill.source}
+                    </span>
+                  </>
+                }
+              />
             ))}
 
             {visibleSkills.length === 0 ? (
@@ -237,7 +244,7 @@ export function PluginsSettingsSection({
           </div>
         </Tabs.Panel>
 
-        <Tabs.Panel className="pt-4" id="mcp">
+        <Tabs.Panel className="pt-5" id="mcp">
           <div className="flex flex-col gap-3">
             <TextField aria-label="搜索 MCP" value={searchQuery}>
               <Input
@@ -248,16 +255,87 @@ export function PluginsSettingsSection({
             </TextField>
 
             {visibleMcpServers.map((server) => (
-              <Card
+              <SettingsItemCard
                 key={server.id}
-                className="flex min-h-14 flex-row items-center justify-between gap-3 rounded-xl !border !border-solid !border-foreground/15 bg-surface px-3 py-2 shadow-none"
-                variant="transparent"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {server.name}
-                    </span>
+                actions={
+                  <>
+                    {server.status === 'disconnected' ? (
+                      <Button
+                        className="h-7 min-h-0 rounded-full !px-2.5 !text-xs"
+                        size="sm"
+                        variant="outline"
+                        onPress={() =>
+                          setMcpServers((currentServers) =>
+                            currentServers.map((currentServer) =>
+                              currentServer.id === server.id
+                                ? {
+                                    ...currentServer,
+                                    enabled: true,
+                                    status: 'connected',
+                                  }
+                                : currentServer,
+                            ),
+                          )
+                        }
+                      >
+                        模拟连接
+                      </Button>
+                    ) : (
+                      <Switch
+                        size="sm"
+                        isSelected={server.enabled}
+                        onChange={(enabled) =>
+                          setMcpServers((currentServers) =>
+                            currentServers.map((currentServer) =>
+                              currentServer.id === server.id
+                                ? { ...currentServer, enabled }
+                                : currentServer,
+                            ),
+                          )
+                        }
+                      >
+                        <Switch.Content>
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                          <Label className="sr-only">
+                            {server.enabled ? '禁用' : '启用'} MCP {server.name}
+                          </Label>
+                        </Switch.Content>
+                      </Switch>
+                    )}
+                    <Button
+                      isIconOnly
+                      aria-label={`移除 MCP ${server.name}`}
+                      className="size-7 min-w-7 text-muted"
+                      size="sm"
+                      variant="ghost"
+                      onPress={() => {
+                        if (!window.confirm(`移除 MCP“${server.name}”？`)) return
+                        setMcpServers((currentServers) =>
+                          currentServers.filter(
+                            (currentServer) => currentServer.id !== server.id,
+                          ),
+                        )
+                      }}
+                    >
+                      <TrashBin className="size-3.5" />
+                    </Button>
+                  </>
+                }
+                description={
+                  <span title={server.endpoint}>
+                    {server.transport === 'stdio'
+                      ? 'STDIO'
+                      : 'Streamable HTTP'}
+                    {' · '}
+                    {server.endpoint}
+                  </span>
+                }
+                icon={<Server aria-hidden className="size-4 text-muted" />}
+                title={
+                  <>
+                    <span className="truncate">{server.name}</span>
                     <CircleFill
                       aria-label={
                         server.status === 'connected'
@@ -267,82 +345,9 @@ export function PluginsSettingsSection({
                       className={`size-2 shrink-0 ${server.status === 'connected' ? 'text-success' : 'text-muted'}`}
                       role="img"
                     />
-                  </div>
-                  <p
-                    className="mt-1 truncate text-xs leading-5 text-muted"
-                    title={server.endpoint}
-                  >
-                    {server.transport === 'stdio'
-                      ? 'STDIO'
-                      : 'Streamable HTTP'}
-                    {' · '}
-                    {server.endpoint}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {server.status === 'disconnected' ? (
-                    <Button
-                      className="h-7 min-h-0 rounded-full !px-2.5 !text-xs"
-                      size="sm"
-                      variant="outline"
-                      onPress={() =>
-                        setMcpServers((currentServers) =>
-                          currentServers.map((currentServer) =>
-                            currentServer.id === server.id
-                              ? {
-                                  ...currentServer,
-                                  enabled: true,
-                                  status: 'connected',
-                                }
-                              : currentServer,
-                          ),
-                        )
-                      }
-                    >
-                      模拟连接
-                    </Button>
-                  ) : (
-                    <Switch
-                      isSelected={server.enabled}
-                      onChange={(enabled) =>
-                        setMcpServers((currentServers) =>
-                          currentServers.map((currentServer) =>
-                            currentServer.id === server.id
-                              ? { ...currentServer, enabled }
-                              : currentServer,
-                          ),
-                        )
-                      }
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                        <Label className="sr-only">
-                          {server.enabled ? '禁用' : '启用'} MCP {server.name}
-                        </Label>
-                      </Switch.Content>
-                    </Switch>
-                  )}
-                  <Button
-                    isIconOnly
-                    aria-label={`移除 MCP ${server.name}`}
-                    className="size-7 min-w-7 text-muted"
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => {
-                      if (!window.confirm(`移除 MCP“${server.name}”？`)) return
-                      setMcpServers((currentServers) =>
-                        currentServers.filter(
-                          (currentServer) => currentServer.id !== server.id,
-                        ),
-                      )
-                    }}
-                  >
-                    <TrashBin className="size-3.5" />
-                  </Button>
-                </div>
-              </Card>
+                  </>
+                }
+              />
             ))}
 
             {visibleMcpServers.length === 0 ? (
@@ -407,6 +412,13 @@ export function PluginsSettingsSection({
               />
             )}
           </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel className="pt-5" id="plugins">
+          <PluginListPanel
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+          />
         </Tabs.Panel>
       </Tabs>
     </section>

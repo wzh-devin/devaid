@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AppLayout, useAppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { ChatConversation } from '@agile-avocation/ui-pro/chat-conversation'
 import { Tabs } from '@heroui/react'
 import type { ChatThread } from '../../features/chat/chat-data.ts'
@@ -15,6 +16,7 @@ interface ChatPageProps {
 /** 渲染 Recent 会话消息，并复用聊天输入区进行前端模拟发送。 */
 export function ChatPage({ thread }: ChatPageProps) {
   const [draft, setDraft] = useState('')
+  const appLayout = useAppLayout()
   const { selectedWorkspaceId, workspaces } = useChatWorkspace()
   const [fixedWorkspaceId] = useState(
     () =>
@@ -25,7 +27,7 @@ export function ChatPage({ thread }: ChatPageProps) {
   return (
     <div className="flex h-[calc(100svh-var(--chat-navbar-height,64px))] flex-col overflow-hidden min-[769px]:h-svh">
       <Tabs
-        className="flex min-h-0 flex-1 flex-col"
+        className="relative flex min-h-0 flex-1 flex-col"
         defaultSelectedKey="conversation"
         variant="secondary"
       >
@@ -41,6 +43,16 @@ export function ChatPage({ thread }: ChatPageProps) {
             </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
+        <AppLayout.AsideTrigger
+          aria-label={
+            appLayout?.isAsideOpen ? '关闭变更侧栏' : '打开变更侧栏'
+          }
+          className="!absolute top-1.5 right-4 z-10 !m-0 !inline-flex data-[state=open]:bg-default"
+          closedTooltip="打开变更侧栏"
+          openTooltip="关闭变更侧栏"
+          tooltipProps={{ delay: 0, placement: 'bottom' }}
+          variant="tertiary"
+        />
 
         <Tabs.Panel
           className="min-h-0 flex-1 overflow-hidden p-0"

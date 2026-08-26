@@ -4,8 +4,9 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react'
+import type { PluginConnector } from './plugin-connectors.ts'
 
-export type PluginSettingsTab = 'mcp' | 'skills'
+export type PluginSettingsTab = 'mcp' | 'plugins' | 'skills'
 export type McpTransport = 'http' | 'stdio'
 export type McpConnectionStatus = 'connected' | 'disconnected'
 
@@ -31,7 +32,9 @@ export interface McpServer {
 interface PluginSettingsContextValue {
   mcpServers: McpServer[]
   openPluginSettings: (tab: PluginSettingsTab) => void
+  pluginConnectors: PluginConnector[]
   setMcpServers: Dispatch<SetStateAction<McpServer[]>>
+  setPluginConnectors: Dispatch<SetStateAction<PluginConnector[]>>
   setSkills: Dispatch<SetStateAction<PluginSkill[]>>
   skills: PluginSkill[]
 }

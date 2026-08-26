@@ -9,10 +9,12 @@ import { CHAT_THREADS } from '../features/chat/chat-data.ts'
 import { ChatNavbar } from '../features/chat/components/ChatNavbar.tsx'
 import { ChatSearchDialog } from '../features/chat/components/ChatSearchDialog.tsx'
 import { ChatSidebar } from '../features/chat/components/ChatSidebar.tsx'
+import { WorkspaceChangesPanel } from '../features/chat/components/WorkspaceChangesPanel.tsx'
 import { ChatWorkspaceContext } from '../features/chat/workspace-context.ts'
 import type { ChatWorkspace } from '../features/chat/workspace-data.ts'
 import { SettingsDialog } from '../features/settings/components/SettingsDialog.tsx'
 import { ModelSettingsContext } from '../features/settings/model-settings-context.tsx'
+import { INITIAL_PLUGIN_CONNECTORS } from '../features/settings/plugin-connectors.ts'
 import {
   INITIAL_MCP_SERVERS,
   INITIAL_PLUGIN_SKILLS,
@@ -47,6 +49,7 @@ export function ChatLayout({
 }: ChatLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isWorkspaceChangesOpen, setIsWorkspaceChangesOpen] = useState(false)
   const [providers, setProviders] = useState(createInitialModelProviders)
   const [permission, setPermission] =
     useState<PermissionId>('workspace-write')
@@ -54,10 +57,17 @@ export function ChatLayout({
   const [mcpServers, setMcpServers] = useState(() => [
     ...INITIAL_MCP_SERVERS,
   ])
+  const [pluginConnectors, setPluginConnectors] = useState(() =>
+    INITIAL_PLUGIN_CONNECTORS.map((connector) => ({
+      ...connector,
+      skills: connector.skills.map((skill) => ({ ...skill })),
+    })),
+  )
   const [settingsTarget, setSettingsTarget] = useState<{
     pluginTab: PluginSettingsTab
     section: 'general' | 'plugins'
   }>({ pluginTab: 'skills', section: 'general' })
+  const isThreadPage = activePage.kind === 'thread'
 
   const openPluginSettings = useCallback((pluginTab: PluginSettingsTab) => {
     setSettingsTarget({ pluginTab, section: 'plugins' })
@@ -94,7 +104,9 @@ export function ChatLayout({
           value={{
             mcpServers,
             openPluginSettings,
+            pluginConnectors,
             setMcpServers,
+            setPluginConnectors,
             setSkills,
             skills,
           }}
@@ -103,11 +115,20 @@ export function ChatLayout({
             value={{ onWorkspaceSelect, selectedWorkspaceId, workspaces }}
           >
             <AppLayout
+              aside={isThreadPage ? <WorkspaceChangesPanel /> : undefined}
+              asideDefaultSize="420px"
+              asideMaxSize="50%"
+              asideMinSize="360px"
+              asideMobile="sheet"
+              asideOpen={isThreadPage && isWorkspaceChangesOpen}
+              asideResizable={isThreadPage}
               className={
-                activePage.kind === 'thread' ? 'chat-layout--thread' : undefined
+                isThreadPage ? 'chat-layout--thread' : undefined
               }
+              key={isThreadPage ? 'thread-layout' : 'standard-layout'}
               navigate={onNavigate}
               sidebarCollapsible="icon"
+              onAsideOpenChange={setIsWorkspaceChangesOpen}
               navbar={
                 <ChatNavbar
                   activePage={activePage}

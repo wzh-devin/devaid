@@ -146,28 +146,34 @@ const ResizableLayout = ({ aside, asideDefaultSize, asideMaxSize, asideMinSize, 
     useEffect(() => {
         if (!sidebarResizable)
             return;
-        const panel = sidebarRef.current;
-        if (!panel)
-            return;
-        if (isSidebarOpen && panel.isCollapsed())
-            panel.expand();
-        else if (!isSidebarOpen && !panel.isCollapsed())
-            panel.collapse();
+        const timeout = window.setTimeout(() => {
+            const panel = sidebarRef.current;
+            if (!panel)
+                return;
+            if (isSidebarOpen && panel.isCollapsed())
+                panel.expand();
+            else if (!isSidebarOpen && !panel.isCollapsed())
+                panel.collapse();
+        });
+        return () => window.clearTimeout(timeout);
     }, [isSidebarOpen, sidebarResizable]);
     useEffect(() => {
         if (!asideResizable)
             return;
-        const panel = asideRef.current;
-        if (!panel)
-            return;
-        if (isAsideOpen && panel.isCollapsed())
-            panel.expand();
-        else if (!isAsideOpen && !panel.isCollapsed())
-            panel.collapse();
+        const timeout = window.setTimeout(() => {
+            const panel = asideRef.current;
+            if (!panel)
+                return;
+            if (isAsideOpen && panel.isCollapsed())
+                panel.expand();
+            else if (!isAsideOpen && !panel.isCollapsed())
+                panel.collapse();
+        });
+        return () => window.clearTimeout(timeout);
     }, [isAsideOpen, asideResizable]);
-    const sidebarPanel = sidebar && sidebarResizable ? (_jsx(Resizable.Panel, { collapsible: true, className: "app-layout__sidebar-panel", collapsedSize: 0, defaultSize: sidebarDefaultSize, groupResizeBehavior: sidebarResizeBehavior, handleRef: sidebarRef, id: "app-layout-sidebar", maxSize: sidebarMaxSize, minSize: sidebarMinSize, onCollapse: () => setSidebarOpen(false), onExpand: () => setSidebarOpen(true), children: sidebar }, "sidebar-panel")) : null;
+    const sidebarPanel = sidebar && sidebarResizable ? (_jsx(Resizable.Panel, { collapsible: true, className: "app-layout__sidebar-panel", collapsedSize: 0, defaultSize: isSidebarOpen ? sidebarDefaultSize : 0, groupResizeBehavior: sidebarResizeBehavior, handleRef: sidebarRef, id: "app-layout-sidebar", maxSize: sidebarMaxSize, minSize: sidebarMinSize, onCollapse: () => setSidebarOpen(false), onExpand: () => setSidebarOpen(true), children: sidebar }, "sidebar-panel")) : null;
     const sidebarHandle = sidebar && sidebarResizable ? (_jsx(Resizable.Handle, { type: "line", variant: "primary" }, "sidebar-handle")) : null;
-    const asidePanel = aside && asideResizable ? (_jsx(Resizable.Panel, { collapsible: true, className: "app-layout__aside-panel", collapsedSize: 0, defaultSize: asideDefaultSize, groupResizeBehavior: asideResizeBehavior, handleRef: asideRef, id: "app-layout-aside", maxSize: asideMaxSize, minSize: asideMinSize, onCollapse: () => setAsideOpen(false), onExpand: () => setAsideOpen(true), children: aside }, "aside-panel")) : null;
+    const asidePanel = aside && asideResizable ? (_jsx(Resizable.Panel, { collapsible: true, className: "app-layout__aside-panel", collapsedSize: 0, defaultSize: isAsideOpen ? asideDefaultSize : 0, groupResizeBehavior: asideResizeBehavior, handleRef: asideRef, id: "app-layout-aside", maxSize: asideMaxSize, minSize: asideMinSize, onCollapse: () => setAsideOpen(false), onExpand: () => setAsideOpen(true), children: aside }, "aside-panel")) : null;
     const asideHandle = aside && asideResizable ? (_jsx(Resizable.Handle, { type: "line", variant: "primary" }, "aside-handle")) : null;
     const staticSidebar = sidebar && !sidebarResizable ? sidebar : null;
     const staticAside = aside && !asideResizable ? (_jsx("aside", { className: "app-layout__aside", "data-slot": "app-layout-aside", "data-state": isAsideOpen ? 'open' : 'closed', children: aside })) : null;

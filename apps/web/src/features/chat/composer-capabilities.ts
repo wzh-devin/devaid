@@ -89,7 +89,7 @@ const PLUGINS: readonly ComposerCapability[] = [
     id: 'settings-skills',
     kind: 'plugin',
     label: '管理插件',
-    settingsTab: 'skills',
+    settingsTab: 'plugins',
   },
 ]
 

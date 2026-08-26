@@ -9,6 +9,12 @@ import {
   isComposerModeContext,
   removeComposerRange,
 } from './composer-capabilities.ts'
+import {
+  filterPluginConnectors,
+  INITIAL_PLUGIN_CONNECTORS,
+  togglePluginInstallation,
+  togglePluginSkill,
+} from '../settings/plugin-connectors.ts'
 
 const skills = [
   {
@@ -121,6 +127,9 @@ test('菜单能力会转换为结构化上下文，管理入口不会转换', ()
   const manageMcp = groups
     .find((group) => group.id === 'mcp')
     ?.items.find((item) => item.settingsTab)
+  const managePlugins = groups
+    .find((group) => group.id === 'plugins')
+    ?.items.find((item) => item.settingsTab)
 
   assert.deepEqual(createComposerContextItem(plan), {
     description: '先整理任务步骤，再开始执行。',
@@ -131,6 +140,46 @@ test('菜单能力会转换为结构化上下文，管理入口不会转换', ()
     sourceId: undefined,
   })
   assert.equal(createComposerContextItem(manageMcp), null)
+  assert.equal(managePlugins?.settingsTab, 'plugins')
+})
+
+test('插件列表支持搜索，并独立切换安装和技能状态', () => {
+  assert.deepEqual(
+    INITIAL_PLUGIN_CONNECTORS.map((connector) => connector.name),
+    ['GitHub', 'Gmail'],
+  )
+  assert.deepEqual(
+    filterPluginConnectors(INITIAL_PLUGIN_CONNECTORS, '代码仓库').map(
+      (connector) => connector.name,
+    ),
+    ['GitHub'],
+  )
+  assert.deepEqual(
+    filterPluginConnectors(INITIAL_PLUGIN_CONNECTORS, ' gmail ').map(
+      (connector) => connector.name,
+    ),
+    ['Gmail'],
+  )
+  assert.deepEqual(
+    filterPluginConnectors(INITIAL_PLUGIN_CONNECTORS, '不存在'),
+    [],
+  )
+
+  const uninstalledConnectors = togglePluginInstallation(
+    INITIAL_PLUGIN_CONNECTORS,
+    'github',
+  )
+  assert.equal(uninstalledConnectors[0]?.isInstalled, false)
+  assert.equal(uninstalledConnectors[1]?.isInstalled, false)
+
+  const updatedSkills = togglePluginSkill(
+    INITIAL_PLUGIN_CONNECTORS,
+    'github',
+    'github-issue-management',
+  )
+  assert.equal(updatedSkills[0]?.skills[2]?.isEnabled, true)
+  assert.equal(updatedSkills[0]?.skills[0]?.isEnabled, true)
+  assert.equal(updatedSkills[1]?.skills[0]?.isEnabled, true)
 })
 
 test('命令保持单选，其他上下文按 ID 去重', () => {
