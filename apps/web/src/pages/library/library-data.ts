@@ -9,8 +9,7 @@ export interface LibraryItem {
 
 export const LIBRARY_ITEMS: readonly LibraryItem[] = [
   {
-    description:
-      '展示 Markdown、思维链、加载状态和消息操作的示例对话。',
+    description: '展示 Markdown、思维链、加载状态和消息操作的示例对话。',
     id: 'lib-pro-ai-showcase',
     tags: ['演示', '组件'],
     threadId: 'pro-ai-showcase',
@@ -18,8 +17,7 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     updatedAt: '刚刚',
   },
   {
-    description:
-      '适合工作日晚餐的快捷提示词、语气预设和示例。',
+    description: '适合工作日晚餐的快捷提示词、语气预设和示例。',
     id: 'lib-quick-dinners',
     tags: ['烹饪', '日常'],
     threadId: 'quick-recipes-for-dinner',
@@ -36,8 +34,7 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     updatedAt: '3 天前',
   },
   {
-    description:
-      '面向产品团队和审慎决策者的首页定位文案方案。',
+    description: '面向产品团队和审慎决策者的首页定位文案方案。',
     id: 'lib-homepage-copy',
     tags: ['营销', '文案'],
     threadId: 'rewrite-homepage-value-prop',
@@ -45,8 +42,7 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     updatedAt: '上周',
   },
   {
-    description:
-      '将进展、风险和下一步整合成可直接粘贴的周报模板。',
+    description: '将进展、风险和下一步整合成可直接粘贴的周报模板。',
     id: 'lib-weekly-status',
     tags: ['团队', '运营'],
     threadId: 'weekly-team-update-summary',
@@ -61,8 +57,7 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     updatedAt: '本月早些时候',
   },
   {
-    description:
-      '比较按用量、按席位和混合 SaaS 定价模式的分析框架。',
+    description: '比较按用量、按席位和混合 SaaS 定价模式的分析框架。',
     id: 'lib-pricing-models',
     tags: ['商业', '定价'],
     title: '定价模式对比',

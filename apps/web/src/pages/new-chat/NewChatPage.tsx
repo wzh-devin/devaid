@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { PromptSuggestion } from '@agile-avocation/ui-pro/prompt-suggestion'
-import { SUGGESTED_PROMPTS } from '../../features/chat/chat-data.ts'
 import {
   ChatComposer,
   type ChatSubmitPayload,
-} from '../../features/chat/components/ChatComposer.tsx'
+  SUGGESTED_PROMPTS,
+} from '../../features/chat/index.ts'
 
 interface NewChatPageProps {
   draft: string
@@ -28,9 +28,7 @@ export function NewChatPage({ draft, onDraftChange }: NewChatPageProps) {
         <div className="mx-auto flex min-h-full w-full max-w-[714px] flex-col justify-center px-4 py-10">
           <PromptSuggestion>
             <PromptSuggestion.Header>
-              <PromptSuggestion.Title>
-                你想从哪里开始？
-              </PromptSuggestion.Title>
+              <PromptSuggestion.Title>你想从哪里开始？</PromptSuggestion.Title>
               <PromptSuggestion.Description>
                 输入问题，或从下面的建议中选择一个开始。当前为模拟对话，不会实际发送任何内容。
               </PromptSuggestion.Description>

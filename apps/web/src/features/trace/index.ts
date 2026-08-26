@@ -1,1 +1,1 @@
-export { AgentTraceView } from "./components/agent-trace-view";
+export { AgentTraceView } from './components/index.ts'

@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { AppLayout, useAppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { ChatConversation } from '@agile-avocation/ui-pro/chat-conversation'
 import { Tabs } from '@heroui/react'
-import type { ChatThread } from '../../features/chat/chat-data.ts'
 import {
   type ApprovalDecision,
   ApprovalPrompt,
-} from '../../features/chat/components/ApprovalPrompt.tsx'
-import { ChatComposer } from '../../features/chat/components/ChatComposer.tsx'
-import { ThreadMessage } from '../../features/chat/components/ThreadMessage.tsx'
-import { findPendingToolApproval } from '../../features/chat/tool-display.ts'
-import { useChatWorkspace } from '../../features/chat/workspace-context.ts'
-import { findWorkspaceByThreadId } from '../../features/chat/workspace-data.ts'
+  ChatComposer,
+  type ChatThread,
+  findPendingToolApproval,
+  findWorkspaceByThreadId,
+  ThreadMessage,
+  useChatWorkspace,
+} from '../../features/chat/index.ts'
 import { AgentTraceView } from '../../features/trace/index.ts'
 
 interface ChatPageProps {
@@ -29,8 +29,7 @@ export function ChatPage({ thread }: ChatPageProps) {
   const { selectedWorkspaceId, workspaces } = useChatWorkspace()
   const [fixedWorkspaceId] = useState(
     () =>
-      findWorkspaceByThreadId(workspaces, thread.id)?.id ??
-      selectedWorkspaceId,
+      findWorkspaceByThreadId(workspaces, thread.id)?.id ?? selectedWorkspaceId,
   )
   const pendingApproval = findPendingToolApproval(
     thread.messages,
@@ -73,9 +72,7 @@ export function ChatPage({ thread }: ChatPageProps) {
           </Tabs.List>
         </Tabs.ListContainer>
         <AppLayout.AsideTrigger
-          aria-label={
-            appLayout?.isAsideOpen ? '关闭变更侧栏' : '打开变更侧栏'
-          }
+          aria-label={appLayout?.isAsideOpen ? '关闭变更侧栏' : '打开变更侧栏'}
           className="!absolute top-1.5 right-4 z-10 !m-0 !inline-flex data-[state=open]:bg-default"
           closedTooltip="打开变更侧栏"
           openTooltip="关闭变更侧栏"

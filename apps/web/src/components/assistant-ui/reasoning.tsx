@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { cn } from '../../lib/utils.ts'
+import { cn } from '../../lib/index.ts'
 import {
   Collapsible,
   CollapsibleContent,

@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChatActivePage } from '../features/chat/chat-data.ts'
 import {
   CHAT_THREADS,
-  getChatThread,
-} from '../features/chat/chat-data.ts'
-import type { ChatWorkspace } from '../features/chat/workspace-data.ts'
-import {
+  type ChatActivePage,
+  type ChatWorkspace,
   findWorkspaceByThreadId,
+  getChatThread,
   INITIAL_CHAT_WORKSPACES,
-} from '../features/chat/workspace-data.ts'
-import { ChatPage } from '../pages/chat/ChatPage.tsx'
-import { ExplorePage } from '../pages/explore/ExplorePage.tsx'
-import { LibraryPage } from '../pages/library/LibraryPage.tsx'
-import { NewChatPage } from '../pages/new-chat/NewChatPage.tsx'
+} from '../features/chat/index.ts'
+import { ChatPage } from '../pages/chat/index.ts'
+import { ExplorePage } from '../pages/explore/index.ts'
+import { LibraryPage } from '../pages/library/index.ts'
+import { NewChatPage } from '../pages/new-chat/index.ts'
 import { ChatLayout } from './ChatLayout.tsx'
-import { resolveChatRoute } from './chat-route.ts'
+import { resolveChatRoute } from './routing/index.ts'
 
 /** 从浏览器历史状态中安全读取可选草稿，忽略其他页面写入的状态。 */
 const readHistoryDraft = () => {
@@ -51,10 +49,10 @@ export function App() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(() => {
     if (activePage.kind === 'thread') {
       return (
-        findWorkspaceByThreadId(
-          INITIAL_CHAT_WORKSPACES,
-          activePage.thread.id,
-        )?.id ?? INITIAL_CHAT_WORKSPACES[0]?.id ?? ''
+        findWorkspaceByThreadId(INITIAL_CHAT_WORKSPACES, activePage.thread.id)
+          ?.id ??
+        INITIAL_CHAT_WORKSPACES[0]?.id ??
+        ''
       )
     }
 
@@ -63,10 +61,7 @@ export function App() {
 
   /** 把新选择的本地目录加入聊天外壳的页面内工作区。 */
   const handleWorkspaceAdd = useCallback((workspace: ChatWorkspace) => {
-    setWorkspaces((currentWorkspaces) => [
-      ...currentWorkspaces,
-      workspace,
-    ])
+    setWorkspaces((currentWorkspaces) => [...currentWorkspaces, workspace])
   }, [])
 
   const commitNavigation = useCallback(
@@ -120,11 +115,7 @@ export function App() {
       selectedThread &&
       route.threadId !== selectedThread.id
     ) {
-      window.history.replaceState(
-        { draft: '' },
-        '',
-        `/${selectedThread.id}`,
-      )
+      window.history.replaceState({ draft: '' }, '', `/${selectedThread.id}`)
     }
   }, [route, selectedThread])
 
@@ -135,7 +126,9 @@ export function App() {
       case 'library':
         return <LibraryPage onNavigate={navigate} />
       case 'thread':
-        return <ChatPage key={activePage.thread.id} thread={activePage.thread} />
+        return (
+          <ChatPage key={activePage.thread.id} thread={activePage.thread} />
+        )
       case 'new':
         return <NewChatPage draft={draft} onDraftChange={setDraft} />
     }

@@ -1,0 +1,19 @@
+@media (min-width: 769px) {
+  .chat-layout--thread > [data-slot='sidebar'] {
+    border-inline-end: 1px solid var(--border);
+  }
+
+  .chat-layout--thread .app-layout__aside {
+    --app-layout-aside-width: clamp(360px, 32vw, 420px);
+  }
+
+  .chat-layout--thread .app-layout__header {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-layout__mobile-aside-sheet {
+    max-width: min(420px, 96vw);
+  }
+}

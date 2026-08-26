@@ -9,6 +9,8 @@
     "test": "pnpm --filter @devaid/web test",
     "typecheck": "pnpm --filter @devaid/web typecheck",
     "lint": "pnpm --filter @devaid/web lint",
+    "format": "pnpm --filter @devaid/web format",
+    "format:check": "pnpm --filter @devaid/web format:check",
     "preview": "pnpm --filter @devaid/web preview"
   }
 }

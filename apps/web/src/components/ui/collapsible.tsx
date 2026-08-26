@@ -11,7 +11,9 @@ function CollapsibleTrigger(props: CollapsiblePrimitive.Trigger.Props) {
 }
 
 function CollapsibleContent(props: CollapsiblePrimitive.Panel.Props) {
-  return <CollapsiblePrimitive.Panel data-slot="collapsible-content" {...props} />
+  return (
+    <CollapsiblePrimitive.Panel data-slot="collapsible-content" {...props} />
+  )
 }
 
 export { Collapsible, CollapsibleContent, CollapsibleTrigger }

@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "node --test --experimental-strip-types src/app/chat-route.test.mjs src/features/chat/composer-capabilities.test.mjs src/features/chat/tool-display.test.mjs src/features/chat/workspace.test.mjs src/features/settings/provider-models.test.mjs src/features/trace/trace-utils.test.mjs",
+    "test": "node --test --experimental-strip-types \"src/**/*.test.mjs\"",
     "typecheck": "tsc -b",
     "lint": "oxlint",
+    "format": "prettier --write src package.json",
+    "format:check": "prettier --check src package.json",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -40,6 +42,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "babel-plugin-react-compiler": "^1.0.0",
     "oxlint": "^1.75.0",
+    "prettier": "^3.9.6",
     "tailwindcss": "4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"

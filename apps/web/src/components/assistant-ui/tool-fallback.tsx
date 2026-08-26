@@ -1,4 +1,7 @@
-import { useScrollLock, type ToolCallMessagePartStatus } from '@assistant-ui/react'
+import {
+  useScrollLock,
+  type ToolCallMessagePartStatus,
+} from '@assistant-ui/react'
 import {
   AlertCircleIcon,
   ChevronDownIcon,
@@ -7,7 +10,7 @@ import {
   XCircleIcon,
 } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
-import { cn } from '../../lib/utils.ts'
+import { cn } from '../../lib/index.ts'
 import {
   Collapsible,
   CollapsibleContent,
@@ -73,7 +76,10 @@ function ToolFallbackRoot({
 
 type ToolStatus = ToolCallMessagePartStatus['type']
 
-const statusIconMap: Record<Exclude<ToolStatus, 'complete'>, React.ElementType> = {
+const statusIconMap: Record<
+  Exclude<ToolStatus, 'complete'>,
+  React.ElementType
+> = {
   running: LoaderIcon,
   incomplete: XCircleIcon,
   'requires-action': AlertCircleIcon,
@@ -233,9 +239,7 @@ function ToolFallbackError({
       <p className="aui-tool-fallback-error-header font-medium text-danger">
         {status.reason === 'cancelled' ? '取消原因：' : '错误：'}
       </p>
-      <p className="aui-tool-fallback-error-reason text-danger">
-        {errorText}
-      </p>
+      <p className="aui-tool-fallback-error-reason text-danger">{errorText}</p>
     </div>
   )
 }
