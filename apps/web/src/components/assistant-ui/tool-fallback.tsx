@@ -16,18 +16,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '../ui/collapsible.tsx'
+import type { ToolFallbackRootProps } from '../../types/assistant-ui/tool-fallback.ts'
 
 const ANIMATION_DURATION = 200
-
-export type ToolFallbackRootProps = Omit<
-  React.ComponentProps<typeof Collapsible>,
-  'className' | 'open' | 'onOpenChange'
-> & {
-  className?: string
-  defaultOpen?: boolean
-  onOpenChange?: (open: boolean) => void
-  open?: boolean
-}
 
 function ToolFallbackRoot({
   className,

@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { ToolPartState } from '@agile-avocation/ui-pro/chat-tool'
-import type { ComposerContextItem } from '../composer/composer-capabilities.ts'
+import type { ComposerContextItem } from '../composer/capabilities/composer-capabilities.ts'
 
 export type ChatNavItemId = 'new' | 'library' | 'explore'
 

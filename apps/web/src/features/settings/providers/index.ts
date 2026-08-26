@@ -1,22 +1,16 @@
-export {
-  ModelSettingsContext,
-  useModelSettings,
-} from './model-settings-context.ts'
+export { ModelSettingsContext, useModelSettings } from './contexts/index.ts'
 export {
   PERMISSION_OPTIONS,
   PermissionSettingsContext,
   usePermissionSettings,
-} from './permission-settings-context.ts'
-export type { PermissionId } from './permission-settings-context.ts'
-export {
-  PluginSettingsContext,
-  usePluginSettings,
-} from './plugin-settings-context.ts'
+} from './contexts/index.ts'
+export type { PermissionId } from './contexts/index.ts'
+export { PluginSettingsContext, usePluginSettings } from './contexts/index.ts'
 export type {
   AssistantSkill,
   McpConnectionStatus,
   McpServer,
   McpTransport,
   PluginSettingsTab,
-} from './plugin-settings-context.ts'
-export { SettingsProvider } from './SettingsProvider.tsx'
+} from './contexts/index.ts'
+export { SettingsProvider } from './components/index.ts'

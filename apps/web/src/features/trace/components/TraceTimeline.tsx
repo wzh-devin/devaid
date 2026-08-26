@@ -22,7 +22,7 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum)
 }
 
-export interface TraceTimelineProps {
+interface TraceTimelineProps {
   durationMs: number
   range: AgentTraceRange | null
   records: readonly AgentTraceRecord[]

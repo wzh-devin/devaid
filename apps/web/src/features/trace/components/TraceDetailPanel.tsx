@@ -17,7 +17,7 @@ const DETAIL_TRANSITION = {
   ease: [0.22, 1, 0.36, 1],
 } as const
 
-export interface TraceDetailPanelProps {
+interface TraceDetailPanelProps {
   record: AgentTraceRecord
   step: number
   onClose: () => void

@@ -1,5 +1,5 @@
 import { useScrollLock } from '@assistant-ui/react'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
 import { BrainIcon, ChevronDownIcon } from 'lucide-react'
 import {
   createContext,
@@ -16,6 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '../ui/collapsible.tsx'
+import type { ReasoningRootProps } from '../../types/assistant-ui/reasoning.ts'
 
 const ANIMATION_DURATION = 200
 const ReasoningPreviewContext = createContext(false)
@@ -30,17 +31,6 @@ const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
   },
   defaultVariants: { variant: 'outline' },
 })
-
-export type ReasoningRootProps = Omit<
-  React.ComponentProps<typeof Collapsible>,
-  'open' | 'onOpenChange'
-> &
-  VariantProps<typeof reasoningVariants> & {
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-    defaultOpen?: boolean
-    streaming?: boolean
-  }
 
 function ReasoningRoot({
   className,

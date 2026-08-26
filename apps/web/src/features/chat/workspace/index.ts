@@ -1,13 +1,13 @@
-export { WorkspaceChangesPanel } from './WorkspaceChangesPanel.tsx'
-export { ChatWorkspaceContext, useChatWorkspace } from './workspace-context.ts'
+export { WorkspaceChangesPanel } from './components/index.ts'
+export { ChatWorkspaceContext, useChatWorkspace } from './contexts/index.ts'
 export {
   findWorkspaceByDirectory,
   findWorkspaceByThreadId,
   INITIAL_CHAT_WORKSPACES,
   resolveComposerWorkspace,
-} from './workspace-data.ts'
+} from './data/index.ts'
 export type {
   ChatWorkspace,
   WorkspaceDirectoryHandle,
   WorkspaceDirectoryPickerWindow,
-} from './workspace-data.ts'
+} from './data/index.ts'

@@ -1,6 +1,5 @@
-export { ChatComposer } from './ChatComposer.tsx'
-export type { ChatSubmitPayload } from './ChatComposer.tsx'
-export type { ComposerContextDisplayItem } from './ComposerContextBar.tsx'
+export { ChatComposer } from './components/index.ts'
+export type { ChatSubmitPayload } from './types/index.ts'
 export type {
   ComposerCapability,
   ComposerCapabilityGroup,
@@ -8,4 +7,4 @@ export type {
   ComposerContextKind,
   ComposerMenuMode,
   ComposerTrigger,
-} from './composer-capabilities.ts'
+} from './capabilities/index.ts'

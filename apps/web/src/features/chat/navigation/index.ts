@@ -1,3 +1,2 @@
-export { ChatNavbar } from './ChatNavbar.tsx'
-export { ChatSearchDialog } from './ChatSearchDialog.tsx'
+export { ChatNavbar, ChatSearchDialog } from './components/index.ts'
 export { ChatSidebar } from './sidebar/index.ts'

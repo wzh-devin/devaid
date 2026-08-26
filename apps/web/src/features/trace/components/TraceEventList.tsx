@@ -23,7 +23,7 @@ function toTraceEventListItems(
   })
 }
 
-export interface TraceEventListProps {
+interface TraceEventListProps {
   range: AgentTraceRange | null
   records: readonly AgentTraceRecord[]
   selectedRecordId: string | null

@@ -1,9 +1,8 @@
-export { ApprovalPrompt } from './ApprovalPrompt.tsx'
-export type { ApprovalDecision } from './ApprovalPrompt.tsx'
-export { ThreadMessage } from './ThreadMessage.tsx'
+export { ApprovalPrompt, ThreadMessage } from './components/index.ts'
+export type { ApprovalDecision } from './types/index.ts'
 export {
   findPendingToolApproval,
   getToolArgsText,
   getToolStatus,
-} from './tool-display.ts'
-export type { PendingToolApproval } from './tool-display.ts'
+} from './utils/index.ts'
+export type { PendingToolApproval } from './utils/index.ts'

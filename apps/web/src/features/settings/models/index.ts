@@ -1,11 +1,11 @@
-export { ModelsSettingsSection } from './ModelsSettingsSection.tsx'
+export { ModelsSettingsSection } from './components/index.ts'
 export {
   createInitialModelProviders,
   getBuiltInModels,
   getSelectableModelGroups,
   mergeProviderModels,
   resolveModelSelectionKey,
-} from './provider-models.ts'
+} from './data/index.ts'
 export type {
   ApiProtocol,
   ModelProvider,
@@ -13,4 +13,4 @@ export type {
   ProviderModelConfig,
   SelectableModel,
   SelectableModelGroup,
-} from './provider-models.ts'
+} from './data/index.ts'

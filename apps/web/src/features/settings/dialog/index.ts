@@ -1,2 +1,1 @@
-export { SettingsDialog } from './SettingsDialog.tsx'
-export type { SettingsSection } from './SettingsDialog.tsx'
+export { SettingsDialog } from './components/index.ts'

@@ -1,7 +1,6 @@
 export { ChatComposer } from './composer/index.ts'
 export type {
   ChatSubmitPayload,
-  ComposerContextDisplayItem,
   ComposerContextItem,
 } from './composer/index.ts'
 export {

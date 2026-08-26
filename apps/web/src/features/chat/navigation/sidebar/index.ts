@@ -1,1 +1,1 @@
-export { ChatSidebar } from './ChatSidebar.tsx'
+export { ChatSidebar } from './components/index.ts'

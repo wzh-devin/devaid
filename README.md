@@ -24,7 +24,7 @@ devaid/
 └── pnpm-workspace.yaml
 ```
 
-每套页面、组件或功能模块通过显式 `index.ts` 暴露公共 API；模块内部直接引用具体文件，跨模块消费者从公共索引导入。业务组件与所属 feature 共置，只有真实跨功能复用的无业务基础组件进入 `components/ui`。
+每套页面、组件或功能模块通过显式 `index.ts` 暴露公共 API；模块内部直接引用具体文件，跨模块消费者从公共索引导入。Feature 业务组件统一放入所属模块的 `components/`，该目录只包含 `.tsx` 和 `index.ts`；跨文件或公共契约类型由对应 `types/` 维护，组件私有 Props 与局部类型留在 TSX 内。数据、Context、工具函数与测试分别进入对应职责目录。只有真实跨功能复用的无业务基础组件进入根级 `components/ui`。
 
 ## Commands
 
