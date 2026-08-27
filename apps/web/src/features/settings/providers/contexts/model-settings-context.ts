@@ -7,7 +7,10 @@ import {
 import type { ModelProvider } from '../../models/data/provider-models.ts'
 
 interface ModelSettingsContextValue {
+  error: string | null
+  isLoading: boolean
   providers: ModelProvider[]
+  refreshProviders: () => Promise<void>
   setProviders: Dispatch<SetStateAction<ModelProvider[]>>
 }
 

@@ -1,0 +1,28 @@
+{
+  "name": "@devaid/server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --experimental-strip-types src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "test": "node --test --experimental-strip-types src/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "format": "prettier --write src package.json tsconfig.json tsconfig.build.json",
+    "format:check": "prettier --check src package.json tsconfig.json tsconfig.build.json"
+  },
+  "dependencies": {
+    "@devaid/ai-contracts": "workspace:*",
+    "@earendil-works/pi-ai": "0.84.3",
+    "@hono/node-server": "2.1.1",
+    "hono": "4.13.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "oxlint": "^1.75.0",
+    "prettier": "^3.9.6",
+    "typescript": "~6.0.2"
+  }
+}

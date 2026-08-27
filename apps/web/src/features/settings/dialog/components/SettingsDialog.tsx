@@ -58,7 +58,7 @@ export function SettingsDialog({
         className="h-[calc(100dvh-24px)] w-[calc(100vw-24px)] max-w-[800px] p-0 sm:h-[min(800px,calc(100dvh-48px))] sm:w-[calc(100vw-48px)] sm:p-0"
         placement="center"
       >
-        <Modal.Dialog className="relative flex h-full w-full max-w-none flex-col gap-0 overflow-hidden rounded-3xl bg-surface p-0 shadow-2xl outline-none">
+        <Modal.Dialog className="settings-dialog relative flex h-full w-full max-w-none flex-col gap-0 overflow-hidden rounded-3xl bg-surface p-0 shadow-2xl outline-none">
           <Modal.Header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-[68px] flex-row items-center gap-0 px-5 py-0 sm:px-6">
             <Modal.Heading className="text-base font-medium text-foreground">
               设置

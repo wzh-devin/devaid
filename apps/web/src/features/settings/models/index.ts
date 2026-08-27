@@ -1,7 +1,6 @@
 export { ModelsSettingsSection } from './components/index.ts'
 export {
   createInitialModelProviders,
-  getBuiltInModels,
   getSelectableModelGroups,
   mergeProviderModels,
   resolveModelSelectionKey,

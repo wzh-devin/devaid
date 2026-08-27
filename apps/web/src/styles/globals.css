@@ -42,3 +42,8 @@ select,
 textarea {
   font: inherit;
 }
+
+.settings-dialog .input:focus,
+.settings-dialog .input[data-focused='true'] {
+  --tw-ring-shadow: 0 0 #0000;
+}

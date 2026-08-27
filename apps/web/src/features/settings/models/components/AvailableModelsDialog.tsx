@@ -17,11 +17,7 @@ export function AvailableModelsDialog({
   onConfirm,
 }: AvailableModelsDialogProps) {
   const configuredIds = new Set(currentModels.map((model) => model.id))
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    candidates
-      .filter((model) => !configuredIds.has(model.id))
-      .map((model) => model.id),
-  )
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   /** 将本次勾选的候选模型交给父级合并后关闭弹窗。 */
   const confirmSelection = () => {

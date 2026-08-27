@@ -1,6 +1,18 @@
+import type {
+  AuthMethod,
+  ProviderAuthStatus,
+  ProviderConfigStatus,
+  ProviderInfo,
+} from '@devaid/ai-contracts'
+
 export interface ProviderModelConfig {
   id: string
   name: string
+}
+
+export interface OAuthLoginOption {
+  id: string
+  label: string
 }
 
 export const API_PROTOCOL_OPTIONS = [
@@ -18,9 +30,14 @@ export interface ProviderConfiguration {
 }
 
 export interface ModelProvider extends ProviderConfiguration {
+  authStatus: ProviderAuthStatus
+  authMethods: AuthMethod[]
+  configStatus: ProviderConfigStatus
+  configuredAuthMethod?: AuthMethod
   id: string
-  isConfigured: boolean
+  isCustom: boolean
   name: string
+  ready: boolean
 }
 
 export interface SelectableModel {
@@ -35,52 +52,34 @@ export interface SelectableModelGroup {
   name: string
 }
 
-const BUILT_IN_MODELS: Record<string, readonly ProviderModelConfig[]> = {
-  'deepseek-official': [
-    { id: 'deepseek-v4-flash', name: 'deepseek-v4-flash' },
-    { id: 'deepseek-v4-pro', name: 'deepseek-v4-pro' },
-  ],
-  openai: [
-    { id: 'gpt-5.6-sol', name: 'gpt-5.6 sol' },
-    { id: 'gpt-5.5', name: 'gpt-5.5' },
-    { id: 'gpt-5.4', name: 'GPT-5.4' },
-    { id: 'gpt-5-mini', name: 'GPT-5 mini' },
-  ],
-  anthropic: [
-    { id: 'claude-opus-4-6', name: 'Claude 4.6 Opus' },
-    { id: 'claude-sonnet-4-6', name: 'Claude 4.6 Sonnet' },
-  ],
-  google: [
-    { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
-    { id: 'gemini-3.1-flash', name: 'Gemini 3.1 Flash' },
-  ],
-  'amazon-bedrock': [
-    { id: 'anthropic.claude-opus-4-6-v1', name: 'Claude 4.6 Opus' },
-    { id: 'anthropic.claude-sonnet-4-6-v1', name: 'Claude 4.6 Sonnet' },
+const OAUTH_LOGIN_OPTIONS: Record<string, readonly OAuthLoginOption[]> = {
+  'openai-codex': [
+    { id: 'browser', label: '浏览器登录（推荐）' },
+    { id: 'device_code', label: '设备码登录' },
   ],
 }
 
-export function getBuiltInModels(providerId: string): ProviderModelConfig[] {
-  return BUILT_IN_MODELS[providerId]?.map((model) => ({ ...model })) ?? []
+/** 返回需要在授权前由用户选择的 OAuth 登录方式。 */
+export function getOAuthLoginOptions(providerId: string): OAuthLoginOption[] {
+  return OAUTH_LOGIN_OPTIONS[providerId]?.map((option) => ({ ...option })) ?? []
 }
 
 /** 创建供设置页和聊天模型菜单共用的页面会话初始配置。 */
-export const createInitialModelProviders = (): ModelProvider[] => [
-  {
-    id: 'deepseek-official',
-    name: 'DeepSeek',
-    isConfigured: true,
-    baseUrl: '',
-    models: getBuiltInModels('deepseek-official'),
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    isConfigured: true,
-    baseUrl: '',
-    models: getBuiltInModels('openai'),
-  },
-]
+export const createInitialModelProviders = (): ModelProvider[] => []
+
+/** 将 Server 契约转换成设置页与聊天菜单共用的数据结构。 */
+export const toModelProvider = (provider: ProviderInfo): ModelProvider => ({
+  authStatus: provider.authStatus,
+  authMethods: provider.authMethods,
+  baseUrl: '',
+  configStatus: provider.configStatus,
+  configuredAuthMethod: provider.configuredAuthMethod,
+  id: provider.providerId,
+  isCustom: false,
+  models: provider.models,
+  name: provider.displayName,
+  ready: provider.ready,
+})
 
 /** 将已配置提供方转换成可供二级菜单展示的去重模型分组。 */
 export const getSelectableModelGroups = (
@@ -89,7 +88,7 @@ export const getSelectableModelGroups = (
   const knownKeys = new Set<string>()
 
   return providers.flatMap((provider) => {
-    if (!provider.isConfigured) return []
+    if (!provider.ready) return []
 
     const models = provider.models.flatMap((model) => {
       const id = model.id.trim()

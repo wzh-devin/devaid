@@ -1,6 +1,5 @@
 export {
   createInitialModelProviders,
-  getBuiltInModels,
   getSelectableModelGroups,
   mergeProviderModels,
   resolveModelSelectionKey,

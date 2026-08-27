@@ -1,5 +1,9 @@
-import { useState, type ReactNode } from 'react'
-import { createInitialModelProviders } from '../../models/data/provider-models.ts'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { getProviders } from '../../models/api/index.ts'
+import {
+  createInitialModelProviders,
+  toModelProvider,
+} from '../../models/data/provider-models.ts'
 import { INITIAL_PLUGIN_CONNECTORS } from '../../plugins/data/plugin-connectors.ts'
 import { ModelSettingsContext } from '../contexts/model-settings-context.ts'
 import {
@@ -26,6 +30,8 @@ export function SettingsProvider({
   onOpenPluginSettings,
 }: SettingsProviderProps) {
   const [providers, setProviders] = useState(createInitialModelProviders)
+  const [isLoadingProviders, setIsLoadingProviders] = useState(true)
+  const [providerError, setProviderError] = useState<string | null>(null)
   const [permission, setPermission] = useState<PermissionId>('workspace-write')
   const [skills, setSkills] = useState(() => [...INITIAL_ASSISTANT_SKILLS])
   const [mcpServers, setMcpServers] = useState(() => [...INITIAL_MCP_SERVERS])
@@ -36,9 +42,42 @@ export function SettingsProvider({
     })),
   )
 
+  /** 重新读取服务端 Provider 能力与认证状态。 */
+  const refreshProviders = useCallback(async () => {
+    setIsLoadingProviders(true)
+    try {
+      const serverProviders = (await getProviders()).map(toModelProvider)
+      setProviders((current) => [
+        ...serverProviders,
+        ...current.filter(
+          (provider) =>
+            provider.isCustom &&
+            !serverProviders.some((item) => item.id === provider.id),
+        ),
+      ])
+      setProviderError(null)
+    } catch (error) {
+      setProviderError((error as Error).message)
+    } finally {
+      setIsLoadingProviders(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    queueMicrotask(() => void refreshProviders())
+  }, [refreshProviders])
+
   return (
     <PermissionSettingsContext.Provider value={{ permission, setPermission }}>
-      <ModelSettingsContext.Provider value={{ providers, setProviders }}>
+      <ModelSettingsContext.Provider
+        value={{
+          error: providerError,
+          isLoading: isLoadingProviders,
+          providers,
+          refreshProviders,
+          setProviders,
+        }}
+      >
         <PluginSettingsContext.Provider
           value={{
             mcpServers,
