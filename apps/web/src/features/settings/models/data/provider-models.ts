@@ -1,9 +1,9 @@
 import type {
-  AuthMethod,
-  ProviderAuthStatus,
-  ProviderConfigStatus,
-  ProviderInfo,
-} from '@devaid/ai-contracts'
+  AuthMethodVo,
+  ProviderAuthStatusVo,
+  ProviderConfigStatusVo,
+  ProviderInfoVo,
+} from '../types/provider-vo.ts'
 
 export interface ProviderModelConfig {
   id: string
@@ -30,10 +30,10 @@ export interface ProviderConfiguration {
 }
 
 export interface ModelProvider extends ProviderConfiguration {
-  authStatus: ProviderAuthStatus
-  authMethods: AuthMethod[]
-  configStatus: ProviderConfigStatus
-  configuredAuthMethod?: AuthMethod
+  authStatus: ProviderAuthStatusVo
+  authMethods: AuthMethodVo[]
+  configStatus: ProviderConfigStatusVo
+  configuredAuthMethod?: AuthMethodVo
   id: string
   isCustom: boolean
   name: string
@@ -68,7 +68,7 @@ export function getOAuthLoginOptions(providerId: string): OAuthLoginOption[] {
 export const createInitialModelProviders = (): ModelProvider[] => []
 
 /** 将 Server 契约转换成设置页与聊天菜单共用的数据结构。 */
-export const toModelProvider = (provider: ProviderInfo): ModelProvider => ({
+export const toModelProvider = (provider: ProviderInfoVo): ModelProvider => ({
   authStatus: provider.authStatus,
   authMethods: provider.authMethods,
   baseUrl: '',

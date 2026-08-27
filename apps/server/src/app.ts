@@ -1,13 +1,13 @@
+import {
+  createProviderModels,
+  FileCredentialStore,
+  FileProviderConfigStore,
+  ModelService,
+  OAuthSessionService,
+} from '@devaid/llm'
 import { Hono } from 'hono'
 
-import { FileCredentialStore } from './features/ai/credential-store.ts'
-import { ModelService } from './features/ai/model-service.ts'
-import { OAuthSessionService } from './features/ai/oauth-session-service.ts'
-import { FileProviderConfigStore } from './features/ai/provider-config-store.ts'
-import { createProviderModels } from './features/ai/providers.ts'
-import { createCompletionRoutes } from './features/ai/routes/completions.ts'
-import { createOAuthRoutes } from './features/ai/routes/oauth.ts'
-import { createProviderRoutes } from './features/ai/routes/providers.ts'
+import { createApiRouter } from './router/index.ts'
 
 /** 创建 Devaid 本地后端业务应用。 */
 export async function createApp(dataDirectory?: string) {
@@ -22,10 +22,7 @@ export async function createApp(dataDirectory?: string) {
   )
   const oauth = new OAuthSessionService(models.models)
 
-  app.get('/api/health', (c) => c.json({ ok: true }))
-  app.route('/api/ai/providers', createProviderRoutes(models, oauth))
-  app.route('/api/ai/oauth', createOAuthRoutes(oauth))
-  app.route('/api/ai/completions', createCompletionRoutes(models))
+  app.route('/api', createApiRouter(models, oauth))
 
   return app
 }

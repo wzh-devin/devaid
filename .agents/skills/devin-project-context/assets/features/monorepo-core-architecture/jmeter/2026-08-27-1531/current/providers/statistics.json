@@ -1,0 +1,34 @@
+{
+  "GET_/api/ai/providers" : {
+    "transaction" : "GET_/api/ai/providers",
+    "sampleCount" : 1000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 0.4800000000000005,
+    "medianResTime" : 0.0,
+    "minResTime" : 0.0,
+    "maxResTime" : 14.0,
+    "pct1ResTime" : 1.0,
+    "pct2ResTime" : 1.0,
+    "pct3ResTime" : 2.0,
+    "throughput" : 1070.6638115631692,
+    "receivedKBytesPerSec" : 1719.9628613490363,
+    "sentKBytesPerSec" : 139.06082708779442
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 1000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 0.4800000000000005,
+    "medianResTime" : 0.0,
+    "minResTime" : 0.0,
+    "maxResTime" : 14.0,
+    "pct1ResTime" : 1.0,
+    "pct2ResTime" : 1.0,
+    "pct3ResTime" : 2.0,
+    "throughput" : 1070.6638115631692,
+    "receivedKBytesPerSec" : 1719.9628613490363,
+    "sentKBytesPerSec" : 139.06082708779442
+  }
+}

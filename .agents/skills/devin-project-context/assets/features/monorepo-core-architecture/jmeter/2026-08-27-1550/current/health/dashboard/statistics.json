@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 1000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 0.6029999999999993,
+    "medianResTime" : 0.0,
+    "minResTime" : 0.0,
+    "maxResTime" : 26.0,
+    "pct1ResTime" : 1.0,
+    "pct2ResTime" : 2.0,
+    "pct3ResTime" : 5.0,
+    "throughput" : 1103.7527593818986,
+    "receivedKBytesPerSec" : 178.92866997792493,
+    "sentKBytesPerSec" : 136.89121136865342
+  },
+  "GET /api/health" : {
+    "transaction" : "GET /api/health",
+    "sampleCount" : 1000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 0.6029999999999993,
+    "medianResTime" : 0.0,
+    "minResTime" : 0.0,
+    "maxResTime" : 26.0,
+    "pct1ResTime" : 1.0,
+    "pct2ResTime" : 2.0,
+    "pct3ResTime" : 5.0,
+    "throughput" : 1103.7527593818986,
+    "receivedKBytesPerSec" : 178.92866997792493,
+    "sentKBytesPerSec" : 136.89121136865342
+  }
+}

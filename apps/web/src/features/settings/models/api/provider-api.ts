@@ -1,13 +1,21 @@
 import type {
-  ApiKeyCredentialRequest,
-  OAuthSessionCreateRequest,
-  OAuthSessionCreateResponse,
-  OAuthSessionInputRequest,
-  OAuthSessionStatusResponse,
-  ProviderConfigUpdate,
-  ProviderInfo,
-  ProviderModelInfo,
-} from '@devaid/ai-contracts'
+  OAuthSessionStatusVo,
+  ProviderInfoVo,
+  ProviderModelInfoVo,
+} from '../types/provider-vo.ts'
+
+interface ApiKeyCredentialRequest {
+  apiKey: string
+}
+
+interface OAuthSessionInputRequest {
+  promptId: string
+  value: string
+}
+
+interface ProviderConfigUpdate {
+  models: Array<{ id: string; name?: string }>
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
@@ -22,11 +30,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** 获取首批 Provider、模型和非秘密认证状态。 */
-export const getProviders = () => request<ProviderInfo[]>('/api/ai/providers')
+export const getProviders = () => request<ProviderInfoVo[]>('/api/ai/providers')
 
 /** 从服务端 Pi AI Provider 读取完整模型目录。 */
 export const getProviderModels = (providerId: string) =>
-  request<ProviderModelInfo[]>(
+  request<ProviderModelInfoVo[]>(
     `/api/ai/providers/${encodeURIComponent(providerId)}/models`,
   )
 
@@ -49,7 +57,7 @@ export const saveProviderConfig = (
   providerId: string,
   body: ProviderConfigUpdate,
 ) =>
-  request<ProviderInfo>(
+  request<ProviderInfoVo>(
     `/api/ai/providers/${encodeURIComponent(providerId)}/config`,
     {
       body: JSON.stringify(body),
@@ -65,11 +73,8 @@ export const deleteProvider = (providerId: string) =>
   })
 
 /** 创建由 Pi AI 执行的 OAuth 登录会话。 */
-export const createOAuthSession = (
-  providerId: string,
-  authMode?: OAuthSessionCreateRequest['authMode'],
-) =>
-  request<OAuthSessionCreateResponse>('/api/ai/oauth/sessions', {
+export const createOAuthSession = (providerId: string, authMode?: string) =>
+  request<OAuthSessionStatusVo>('/api/ai/oauth/sessions', {
     body: JSON.stringify({ authMode, providerId }),
     headers: { 'content-type': 'application/json' },
     method: 'POST',
@@ -77,7 +82,7 @@ export const createOAuthSession = (
 
 /** 查询 OAuth 登录会话。 */
 export const getOAuthSession = (sessionId: string) =>
-  request<OAuthSessionStatusResponse>(
+  request<OAuthSessionStatusVo>(
     `/api/ai/oauth/sessions/${encodeURIComponent(sessionId)}`,
   )
 
@@ -86,7 +91,7 @@ export const submitOAuthInput = (
   sessionId: string,
   body: OAuthSessionInputRequest,
 ) =>
-  request<OAuthSessionStatusResponse>(
+  request<OAuthSessionStatusVo>(
     `/api/ai/oauth/sessions/${encodeURIComponent(sessionId)}/input`,
     {
       body: JSON.stringify(body),

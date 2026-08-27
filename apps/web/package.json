@@ -17,7 +17,6 @@
     "@agile-avocation/ui-pro": "workspace:*",
     "@assistant-ui/react": "^0.15.16",
     "@base-ui/react": "^1.7.0",
-    "@devaid/ai-contracts": "workspace:*",
     "@gravity-ui/icons": "2.21.0",
     "@heroui/react": "3.2.4",
     "@heroui/styles": "3.2.4",

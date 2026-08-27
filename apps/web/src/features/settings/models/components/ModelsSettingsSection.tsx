@@ -1,8 +1,4 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type {
-  AuthMethod,
-  OAuthSessionStatusResponse,
-} from '@devaid/ai-contracts'
 import { CircleFill } from '@gravity-ui/icons'
 import {
   Button,
@@ -35,6 +31,10 @@ import {
   type ModelProvider,
   type ProviderConfiguration,
 } from '../data/provider-models.ts'
+import type {
+  AuthMethodVo,
+  OAuthSessionStatusVo,
+} from '../types/provider-vo.ts'
 import { ProviderCustomSettings } from './ProviderCustomSettings.tsx'
 import { ProviderDeleteDialog } from './ProviderDeleteDialog.tsx'
 import { ProviderEditorHeading } from './ProviderEditorHeading.tsx'
@@ -47,7 +47,7 @@ type ActiveEditor =
   | null
 
 const DEFAULT_API_PROTOCOL: ApiProtocol = 'openai-completions'
-const terminalStatuses = new Set<OAuthSessionStatusResponse['status']>([
+const terminalStatuses = new Set<OAuthSessionStatusVo['status']>([
   'succeeded',
   'failed',
   'cancelled',
@@ -74,12 +74,13 @@ export function ModelsSettingsSection() {
   const [presetProviderId, setPresetProviderId] = useState('')
   const [providerConfiguration, setProviderConfiguration] =
     useState<ProviderConfiguration>(createEmptyConfiguration)
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('api_key')
+  const [authMethod, setAuthMethod] = useState<AuthMethodVo>('api_key')
   const [apiKey, setApiKey] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [oauthStatus, setOauthStatus] =
-    useState<OAuthSessionStatusResponse | null>(null)
+  const [oauthStatus, setOauthStatus] = useState<OAuthSessionStatusVo | null>(
+    null,
+  )
   const [oauthInput, setOauthInput] = useState('')
   const [oauthLoginMethod, setOauthLoginMethod] = useState('')
   const [providerToDelete, setProviderToDelete] =
@@ -186,7 +187,7 @@ export function ModelsSettingsSection() {
   }
 
   /** 应用 OAuth 状态并在已创建的窗口中打开授权地址。 */
-  const applyOAuthStatus = (status: OAuthSessionStatusResponse) => {
+  const applyOAuthStatus = (status: OAuthSessionStatusVo) => {
     setOauthStatus(status)
     const firstOption = status.prompt?.options?.[0]
     if (firstOption) {
@@ -204,7 +205,7 @@ export function ModelsSettingsSection() {
 
   /** 轮询 OAuth 会话，成功后刷新对应 Provider。 */
   const watchOAuth = async (
-    initial: OAuthSessionStatusResponse,
+    initial: OAuthSessionStatusVo,
     providerId: string,
     run: number,
   ) => {
@@ -431,7 +432,7 @@ export function ModelsSettingsSection() {
             value={authMethod}
             onChange={(method) => {
               resetOAuth()
-              setAuthMethod(method as AuthMethod)
+              setAuthMethod(method as AuthMethodVo)
               setOauthLoginMethod(oauthLoginOptions[0]?.id ?? '')
               setActionError(null)
             }}
