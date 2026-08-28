@@ -3,12 +3,7 @@ export type {
   ChatSubmitPayload,
   ComposerContextItem,
 } from './composer/index.ts'
-export {
-  CHAT_THREADS,
-  DEFAULT_CHAT_THREAD_ID,
-  getChatThread,
-  SUGGESTED_PROMPTS,
-} from './data/index.ts'
+export { SUGGESTED_PROMPTS } from './data/index.ts'
 export type { ChatActivePage, ChatThread } from './data/index.ts'
 export {
   ApprovalPrompt,
@@ -23,11 +18,11 @@ export {
 } from './navigation/index.ts'
 export {
   ChatWorkspaceContext,
-  findWorkspaceByDirectory,
   findWorkspaceByThreadId,
-  INITIAL_CHAT_WORKSPACES,
   resolveComposerWorkspace,
   useChatWorkspace,
+  useWorkspaces,
   WorkspaceChangesPanel,
 } from './workspace/index.ts'
 export type { ChatWorkspace } from './workspace/index.ts'
+export { createPendingChatThread, useAgentSessions } from './session/index.ts'

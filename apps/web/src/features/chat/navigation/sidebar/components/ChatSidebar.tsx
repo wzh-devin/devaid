@@ -2,17 +2,13 @@ import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { Sidebar } from '@agile-avocation/ui-pro/sidebar'
 import { Sheet } from '@agile-avocation/ui-pro/sheet'
-import type { WorkspaceDirectoryPickerWindow } from '../../../workspace/data/workspace-data.ts'
-import {
-  findWorkspaceByDirectory,
-  INITIAL_CHAT_WORKSPACES,
-} from '../../../workspace/data/workspace-data.ts'
 import type { ChatSidebarProps } from '../types/chat-sidebar.ts'
 import { SidebarContents } from './SidebarContents.tsx'
 
 /** 渲染品牌、聊天导航和设置入口，桌面与移动侧栏共享内容。 */
 export function ChatSidebar({
   activePage,
+  isWorkspaceLoading,
   onWorkspaceAdd,
   onWorkspaceSelect,
   onSearch,
@@ -20,50 +16,26 @@ export function ChatSidebar({
   selectedWorkspaceId,
   threads,
   workspaces,
+  workspaceError: externalWorkspaceError,
 }: ChatSidebarProps) {
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState(
-    () => new Set(INITIAL_CHAT_WORKSPACES.map((workspace) => workspace.id)),
+    () => new Set<string>(),
   )
   const [isAddingWorkspace, setIsAddingWorkspace] = useState(false)
-  const [workspaceError, setWorkspaceError] = useState('')
-  /** 打开原生目录选择器，并把真实目录加入当前页面的工作区列表。 */
+  /** 请求本地 Server 打开系统目录选择器，并展开成功注册的工作区。 */
   const handleAddWorkspace = async () => {
-    const pickerWindow = window as WorkspaceDirectoryPickerWindow
-
-    setWorkspaceError('')
-    if (!pickerWindow.showDirectoryPicker) {
-      setWorkspaceError('当前浏览器不支持选择本地目录。')
-      return
-    }
-
     setIsAddingWorkspace(true)
     try {
-      const directoryHandle = await pickerWindow.showDirectoryPicker()
-      const existingWorkspace = await findWorkspaceByDirectory(
-        workspaces,
-        directoryHandle,
-      )
-      const workspaceId =
-        existingWorkspace?.id ?? `workspace-${crypto.randomUUID()}`
-
-      if (!existingWorkspace) {
-        onWorkspaceAdd({
-          directoryHandle,
-          id: workspaceId,
-          label: directoryHandle.name,
-          threadIds: [],
-        })
-      }
-
-      onWorkspaceSelect(workspaceId)
+      const workspace = await onWorkspaceAdd()
+      if (workspace === null) return
+      onWorkspaceSelect(workspace.id)
       setExpandedWorkspaceIds((currentIds) => {
         const nextIds = new Set(currentIds)
-        nextIds.add(workspaceId)
+        nextIds.add(workspace.id)
         return nextIds
       })
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-      setWorkspaceError('无法添加该目录，请重试。')
+    } catch {
+      // 具体错误由 Workspace Hook 从服务端响应提供。
     } finally {
       setIsAddingWorkspace(false)
     }
@@ -85,7 +57,7 @@ export function ChatSidebar({
   const contentProps = {
     activePage,
     expandedWorkspaceIds,
-    isAddingWorkspace,
+    isAddingWorkspace: isAddingWorkspace || isWorkspaceLoading,
     onAddWorkspace: handleAddWorkspace,
     onSearch,
     onSettings,
@@ -93,7 +65,7 @@ export function ChatSidebar({
     onWorkspaceToggle: handleWorkspaceToggle,
     selectedWorkspaceId,
     threads,
-    workspaceError,
+    workspaceError: externalWorkspaceError,
     workspaces,
   }
 

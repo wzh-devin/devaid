@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { FileCredentialStore } from './credential-store.ts'
+import {
+  FileCredentialStore,
+  getDefaultDataDirectory,
+} from './credential-store.ts'
+
+test('默认本地数据目录为当前用户的 ~/.devaid', () => {
+  assert.equal(getDefaultDataDirectory(), join(homedir(), '.devaid'))
+})
 
 test('LLM Credential Store 串行原子写入 version 1 文件并限制权限', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'devaid-credentials-'))

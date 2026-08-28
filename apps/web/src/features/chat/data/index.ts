@@ -3,11 +3,6 @@ export {
   CHAT_SEARCH_MODES,
   SUGGESTED_PROMPTS,
 } from './chat-navigation.ts'
-export {
-  CHAT_THREADS,
-  DEFAULT_CHAT_THREAD_ID,
-  getChatThread,
-} from './chat-threads.ts'
 export type {
   ChatActivePage,
   ChatAssistantStatus,

@@ -111,6 +111,38 @@ export class ModelService {
       .map((model) => ({ id: model.id, name: model.id }))
   }
 
+  /** 解析已启用且已认证的模型，供 Agent Runtime 安全复用。 */
+  async resolveModel(providerId: string, modelId: string) {
+    if (!this.models.getProvider(providerId)) {
+      throw new ModelServiceError(
+        'PROVIDER_NOT_FOUND',
+        'Provider 不存在。',
+        404,
+      )
+    }
+    const selectedModels = await this.configurations.read(providerId)
+    if (!selectedModels.some((model) => model.id === modelId)) {
+      throw new ModelServiceError(
+        'MODEL_NOT_ENABLED',
+        '模型尚未在该提供方中启用。',
+        400,
+      )
+    }
+    const auth = await this.models.checkAuth(providerId).catch(() => undefined)
+    if (!auth) {
+      throw new ModelServiceError(
+        'PROVIDER_NOT_READY',
+        'Provider 尚未授权或凭证已失效。',
+        409,
+      )
+    }
+    const model = this.models.getModel(providerId, modelId)
+    if (!model) {
+      throw new ModelServiceError('MODEL_NOT_FOUND', '模型不存在。', 404)
+    }
+    return model
+  }
+
   /** 校验并原子替换用户显式启用的模型列表。 */
   async saveProviderConfig(providerId: string, configuration: ProviderConfig) {
     if (!this.models.getProvider(providerId)) {
@@ -178,35 +210,7 @@ export class ModelService {
   }
 
   async stream(request: CompletionRequest, signal: AbortSignal) {
-    if (!this.models.getProvider(request.providerId)) {
-      throw new ModelServiceError(
-        'PROVIDER_NOT_FOUND',
-        'Provider 不存在。',
-        404,
-      )
-    }
-    const selectedModels = await this.configurations.read(request.providerId)
-    if (!selectedModels.some((model) => model.id === request.modelId)) {
-      throw new ModelServiceError(
-        'MODEL_NOT_ENABLED',
-        '模型尚未在该提供方中启用。',
-        400,
-      )
-    }
-    const auth = await this.models
-      .checkAuth(request.providerId)
-      .catch(() => undefined)
-    if (!auth) {
-      throw new ModelServiceError(
-        'PROVIDER_NOT_READY',
-        'Provider 尚未授权或凭证已失效。',
-        409,
-      )
-    }
-    const model = this.models.getModel(request.providerId, request.modelId)
-    if (!model) {
-      throw new ModelServiceError('MODEL_NOT_FOUND', '模型不存在。', 404)
-    }
+    const model = await this.resolveModel(request.providerId, request.modelId)
     const context: Context = {
       messages: request.messages.map((message) =>
         toMessage(message, request, model.api),

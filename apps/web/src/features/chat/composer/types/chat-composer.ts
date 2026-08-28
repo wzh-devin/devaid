@@ -7,5 +7,6 @@ export interface ChatSubmitPayload {
   message: string
   modelId: string
   permission: PermissionId
+  providerId: string
   workspaceId: string
 }

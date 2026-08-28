@@ -2,7 +2,6 @@ export interface LibraryItem {
   description: string
   id: string
   tags: readonly string[]
-  threadId?: string
   title: string
   updatedAt: string
 }
@@ -12,7 +11,6 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     description: '展示 Markdown、思维链、加载状态和消息操作的示例对话。',
     id: 'lib-pro-ai-showcase',
     tags: ['演示', '组件'],
-    threadId: 'pro-ai-showcase',
     title: 'Pro AI 组件展示',
     updatedAt: '刚刚',
   },
@@ -20,7 +18,6 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     description: '适合工作日晚餐的快捷提示词、语气预设和示例。',
     id: 'lib-quick-dinners',
     tags: ['烹饪', '日常'],
-    threadId: 'quick-recipes-for-dinner',
     title: '快捷工作日晚餐',
     updatedAt: '昨天',
   },
@@ -29,7 +26,6 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
       '涵盖目标对齐、Beta 测试、发布物料和效果衡量的软件上线规划框架。',
     id: 'lib-launch-plan',
     tags: ['产品', '市场推广'],
-    threadId: 'launch-plan-for-q3-rollout',
     title: '上线规划框架',
     updatedAt: '3 天前',
   },
@@ -37,7 +33,6 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     description: '面向产品团队和审慎决策者的首页定位文案方案。',
     id: 'lib-homepage-copy',
     tags: ['营销', '文案'],
-    threadId: 'rewrite-homepage-value-prop',
     title: '首页定位文案方案',
     updatedAt: '上周',
   },
@@ -45,7 +40,6 @@ export const LIBRARY_ITEMS: readonly LibraryItem[] = [
     description: '将进展、风险和下一步整合成可直接粘贴的周报模板。',
     id: 'lib-weekly-status',
     tags: ['团队', '运营'],
-    threadId: 'weekly-team-update-summary',
     title: '团队周报模板',
     updatedAt: '上周',
   },

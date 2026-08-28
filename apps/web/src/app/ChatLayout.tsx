@@ -8,7 +8,6 @@ import {
   ChatSearchDialog,
   ChatSidebar,
   type ChatThread,
-  CHAT_THREADS,
   ChatWorkspaceContext,
   type ChatWorkspace,
   WorkspaceChangesPanel,
@@ -22,22 +21,28 @@ import {
 interface ChatLayoutProps {
   activePage: ChatActivePage
   children: ReactNode
+  isWorkspaceLoading: boolean
   onNavigate: (path: string, draft?: string) => void
-  onWorkspaceAdd: (workspace: ChatWorkspace) => void
+  onWorkspaceAdd: () => Promise<ChatWorkspace | null>
   onWorkspaceSelect: (workspaceId: string) => void
   selectedWorkspaceId: string
+  threads: readonly ChatThread[]
   workspaces: readonly ChatWorkspace[]
+  workspaceError: string
 }
 
 /** 组合聊天应用外壳，并统一管理搜索弹窗与全局快捷键。 */
 export function ChatLayout({
   activePage,
   children,
+  isWorkspaceLoading,
   onNavigate,
   onWorkspaceAdd,
   onWorkspaceSelect,
   selectedWorkspaceId,
+  threads,
   workspaces,
+  workspaceError,
 }: ChatLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -103,8 +108,10 @@ export function ChatLayout({
           sidebar={
             <ChatSidebar
               activePage={activePage}
+              isWorkspaceLoading={isWorkspaceLoading}
               selectedWorkspaceId={selectedWorkspaceId}
               workspaces={workspaces}
+              workspaceError={workspaceError}
               onSearch={() => setIsSearchOpen(true)}
               onSettings={() => {
                 setSettingsTarget((currentTarget) => ({
@@ -115,14 +122,14 @@ export function ChatLayout({
               }}
               onWorkspaceAdd={onWorkspaceAdd}
               onWorkspaceSelect={onWorkspaceSelect}
-              threads={CHAT_THREADS}
+              threads={threads}
             />
           }
         >
           {children}
           <ChatSearchDialog
             isOpen={isSearchOpen}
-            threads={CHAT_THREADS}
+            threads={threads}
             onOpenChange={setIsSearchOpen}
             onSelect={handleThreadSelect}
           />

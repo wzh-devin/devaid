@@ -6,7 +6,7 @@ import type { ChatSidebarProps } from '../types/chat-sidebar.ts'
 
 interface SidebarContentsProps extends Omit<
   ChatSidebarProps,
-  'onWorkspaceAdd'
+  'isWorkspaceLoading' | 'onWorkspaceAdd'
 > {
   expandedWorkspaceIds: ReadonlySet<string>
   idPrefix?: string
@@ -165,6 +165,11 @@ export function SidebarContents({
                           className={`size-4 shrink-0 ${isSelected ? 'text-accent' : 'text-muted'}`}
                         />
                         <span className="truncate">{workspace.label}</span>
+                        {!workspace.available ? (
+                          <span className="ml-auto shrink-0 text-xs text-danger">
+                            不可用
+                          </span>
+                        ) : null}
                       </Button>
 
                       {isExpanded ? (
@@ -208,6 +213,13 @@ export function SidebarContents({
                     </section>
                   )
                 })}
+                {workspaces.length === 0 ? (
+                  <p className="px-2 py-3 text-xs text-muted">
+                    {isAddingWorkspace
+                      ? '正在加载工作区…'
+                      : '暂无工作区，请先添加本地目录。'}
+                  </p>
+                ) : null}
               </div>
 
               {workspaceError ? (

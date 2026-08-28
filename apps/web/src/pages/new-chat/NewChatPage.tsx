@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import { PromptSuggestion } from '@agile-avocation/ui-pro/prompt-suggestion'
 import {
   ChatComposer,
@@ -8,18 +9,35 @@ import {
 
 interface NewChatPageProps {
   draft: string
+  error?: string
+  status: ChatStatus
   onDraftChange: (draft: string) => void
+  onSubmit: (payload: ChatSubmitPayload) => Promise<boolean>
 }
 
 /** 组合 New Chat 欢迎内容、建议词与消息输入区。 */
-export function NewChatPage({ draft, onDraftChange }: NewChatPageProps) {
+export function NewChatPage({
+  draft,
+  error,
+  onDraftChange,
+  onSubmit,
+  status,
+}: NewChatPageProps) {
   const [fixedWorkspaceId, setFixedWorkspaceId] = useState<string>()
+  const [capabilityError, setCapabilityError] = useState('')
 
-  /** 首次有效发送后固定工作区，后续提交不再允许切换。 */
-  const handleSubmit = ({ workspaceId }: ChatSubmitPayload) => {
-    setFixedWorkspaceId((currentWorkspaceId) =>
-      currentWorkspaceId === undefined ? workspaceId : currentWorkspaceId,
-    )
+  const handleSubmit = async (payload: ChatSubmitPayload) => {
+    if (payload.attachments.length || payload.contextItems.length) {
+      setCapabilityError('附件、Skills、MCP 和命令暂未接入 Agent Runtime。')
+      return false
+    }
+
+    setCapabilityError('')
+    const accepted = await onSubmit(payload)
+    if (accepted) {
+      setFixedWorkspaceId((workspaceId) => workspaceId ?? payload.workspaceId)
+    }
+    return accepted
   }
 
   return (
@@ -30,7 +48,7 @@ export function NewChatPage({ draft, onDraftChange }: NewChatPageProps) {
             <PromptSuggestion.Header>
               <PromptSuggestion.Title>你想从哪里开始？</PromptSuggestion.Title>
               <PromptSuggestion.Description>
-                输入问题，或从下面的建议中选择一个开始。当前为模拟对话，不会实际发送任何内容。
+                输入问题，或从下面的建议中选择一个开始真实会话。
               </PromptSuggestion.Description>
             </PromptSuggestion.Header>
             <PromptSuggestion.Items>
@@ -50,7 +68,9 @@ export function NewChatPage({ draft, onDraftChange }: NewChatPageProps) {
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
           <ChatComposer
+            error={capabilityError || error}
             fixedWorkspaceId={fixedWorkspaceId}
+            status={status}
             value={draft}
             onSubmit={handleSubmit}
             onValueChange={onDraftChange}

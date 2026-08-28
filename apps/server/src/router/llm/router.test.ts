@@ -10,8 +10,9 @@ import type {
   ProviderModelInfoDto,
 } from '../../dto/llm/provider-dto.ts'
 
-test('AI 路由分离授权、候选目录和已保存模型配置', async () => {
+test('AI 路由分离授权、候选目录和已保存模型配置', async (context) => {
   const app = await createApp(await mkdtemp(join(tmpdir(), 'devaid-routes-')))
+  context.after(() => app.close())
   const providers = (await (
     await app.request('/api/ai/providers')
   ).json()) as ProviderInfoDto[]
@@ -136,10 +137,11 @@ test('AI 路由分离授权、候选目录和已保存模型配置', async () =>
   )
 })
 
-test('AI 路由拒绝超限正文和无效 Completion 请求', async () => {
+test('AI 路由拒绝超限正文和无效 Completion 请求', async (context) => {
   const app = await createApp(
     await mkdtemp(join(tmpdir(), 'devaid-route-limits-')),
   )
+  context.after(() => app.close())
   const oversized = await app.request('/api/ai/providers/openai/credential', {
     body: JSON.stringify({ apiKey: 'x'.repeat(21 * 1024) }),
     headers: { 'content-type': 'application/json' },

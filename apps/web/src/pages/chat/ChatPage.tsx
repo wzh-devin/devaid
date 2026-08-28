@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { AppLayout, useAppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { ChatConversation } from '@agile-avocation/ui-pro/chat-conversation'
+import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import { Tabs } from '@heroui/react'
 import {
   type ApprovalDecision,
   ApprovalPrompt,
   ChatComposer,
+  type ChatSubmitPayload,
   type ChatThread,
   findPendingToolApproval,
   findWorkspaceByThreadId,
@@ -15,12 +17,29 @@ import {
 import { AgentTraceView } from '../../features/trace/index.ts'
 
 interface ChatPageProps {
+  error?: string
+  isLoading: boolean
+  status: ChatStatus
   thread: ChatThread
+  onStop: () => void
+  onModelChange: (
+    selection: Pick<ChatSubmitPayload, 'modelId' | 'providerId'>,
+  ) => Promise<boolean>
+  onSubmit: (payload: ChatSubmitPayload) => boolean
 }
 
-/** 渲染 Recent 会话消息，并复用聊天输入区进行前端模拟发送。 */
-export function ChatPage({ thread }: ChatPageProps) {
+/** 保留完整会话工作台，并消费当前 Session 的真实消息与运行状态。 */
+export function ChatPage({
+  error,
+  isLoading,
+  onModelChange,
+  onStop,
+  onSubmit,
+  status,
+  thread,
+}: ChatPageProps) {
   const [draft, setDraft] = useState('')
+  const [capabilityError, setCapabilityError] = useState('')
   const [approvalDecisions, setApprovalDecisions] = useState<
     Record<string, ApprovalDecision>
   >({})
@@ -31,13 +50,15 @@ export function ChatPage({ thread }: ChatPageProps) {
     () =>
       findWorkspaceByThreadId(workspaces, thread.id)?.id ?? selectedWorkspaceId,
   )
+  const initialModelKey = thread.providerId
+    ? `${thread.providerId}:${thread.modelId}`
+    : undefined
   const pendingApproval = findPendingToolApproval(
     thread.messages,
     Object.keys(approvalDecisions),
     approvedThreadTools,
   )
 
-  /** 结束当前 mock 审批并继续显示下一个待审批工具。 */
   const handleApprovalResolve = (decision: ApprovalDecision) => {
     if (!pendingApproval) return
     if (decision === 'approve-thread') {
@@ -50,6 +71,16 @@ export function ChatPage({ thread }: ChatPageProps) {
       ...decisions,
       [pendingApproval.key]: decision,
     }))
+  }
+
+  const handleSubmit = (payload: ChatSubmitPayload) => {
+    if (payload.attachments.length || payload.contextItems.length) {
+      setCapabilityError('附件、Skills、MCP 和命令暂未接入 Agent Runtime。')
+      return false
+    }
+
+    setCapabilityError('')
+    return onSubmit(payload)
   }
 
   return (
@@ -87,6 +118,14 @@ export function ChatPage({ thread }: ChatPageProps) {
           <ChatConversation className="h-full min-h-0">
             <ChatConversation.Content className="flex flex-col">
               <div className="mx-auto flex w-full max-w-[714px] flex-col gap-8 px-4 pt-10 pb-6">
+                {isLoading ? (
+                  <p className="text-sm text-muted" role="status">
+                    正在加载会话…
+                  </p>
+                ) : null}
+                {!isLoading && thread.messages.length === 0 && !error ? (
+                  <p className="text-sm text-muted">发送消息开始这段会话。</p>
+                ) : null}
                 {thread.messages.map((message) => (
                   <ThreadMessage
                     key={message.id}
@@ -117,9 +156,16 @@ export function ChatPage({ thread }: ChatPageProps) {
             />
           ) : (
             <ChatComposer
+              error={capabilityError || error}
               fixedWorkspaceId={fixedWorkspaceId}
               initialModelId={thread.modelId}
+              initialModelKey={initialModelKey}
+              isDisabled={isLoading || !thread.modelId}
+              status={status}
               value={draft}
+              onModelChange={onModelChange}
+              onStop={onStop}
+              onSubmit={handleSubmit}
               onValueChange={setDraft}
             />
           )}

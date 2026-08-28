@@ -10,7 +10,7 @@ interface LibraryPageProps {
 
 /** 展示保存的提示词与会话入口，页面数据保持只读。 */
 export function LibraryPage({ onNavigate }: LibraryPageProps) {
-  /** 打开关联会话；没有关联会话时将保存项带入新对话。 */
+  /** 将静态资料库示例作为草稿带入新的真实会话。 */
   const handleSelect = (
     event: MouseEvent<HTMLAnchorElement>,
     libraryItem: LibraryItem,
@@ -18,11 +18,6 @@ export function LibraryPage({ onNavigate }: LibraryPageProps) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
 
     event.preventDefault()
-
-    if (libraryItem.threadId) {
-      onNavigate(`/${libraryItem.threadId}`)
-      return
-    }
 
     onNavigate('/new', libraryItem.description)
   }
@@ -42,15 +37,11 @@ export function LibraryPage({ onNavigate }: LibraryPageProps) {
 
           <PromptSuggestion.Items>
             {LIBRARY_ITEMS.map((libraryItem) => {
-              const href = libraryItem.threadId
-                ? `/${libraryItem.threadId}`
-                : '/new'
-
               return (
                 <a
                   key={libraryItem.id}
                   className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                  href={href}
+                  href="/new"
                   onClick={(event) => handleSelect(event, libraryItem)}
                 >
                   <PromptSuggestion.Item>

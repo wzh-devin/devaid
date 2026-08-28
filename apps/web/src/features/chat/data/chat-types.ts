@@ -101,9 +101,11 @@ export interface ChatThread {
   messages: readonly ChatMessage[]
   modelId: string
   preview: string
+  providerId?: string
   searchModeId: string
   title: string
   updatedAt: string
+  workspaceId?: null | string
   user: {
     avatar: string
     email: string

@@ -4,7 +4,7 @@ import type {
   KeyboardEvent,
   SyntheticEvent,
 } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import { PromptInput } from '@agile-avocation/ui-pro/prompt-input'
 import { Bulb, Folder, Terminal } from '@gravity-ui/icons'
@@ -55,10 +55,18 @@ interface ComposerMenuState {
 
 interface ChatComposerProps {
   className?: string
+  error?: string
   fixedWorkspaceId?: string
   initialModelId?: string
+  initialModelKey?: string
+  isDisabled?: boolean
+  status?: ChatStatus
   value: string
-  onSubmit?: (payload: ChatSubmitPayload) => void
+  onModelChange?: (
+    selection: Pick<ChatSubmitPayload, 'modelId' | 'providerId'>,
+  ) => boolean | Promise<boolean>
+  onStop?: () => void
+  onSubmit: (payload: ChatSubmitPayload) => boolean | Promise<boolean>
   onValueChange: (value: string) => void
 }
 
@@ -71,13 +79,19 @@ const revokeAttachmentUrl = (attachment: PendingAttachment) => {
   }
 }
 
-/** 管理消息草稿、模型、附件以及前端模拟发送状态。 */
+/** 管理消息草稿、模型和可选能力；运行状态由会话协调层控制。 */
 export function ChatComposer({
   className,
+  error,
   fixedWorkspaceId,
   initialModelId = 'gpt-5.4',
+  initialModelKey,
+  isDisabled = false,
+  onModelChange,
   onSubmit,
+  onStop,
   onValueChange,
+  status = 'ready',
   value,
 }: ChatComposerProps) {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
@@ -85,7 +99,7 @@ export function ChatComposer({
   const [contextItems, setContextItems] = useState<ComposerContextItem[]>([])
   const [menuState, setMenuState] = useState<ComposerMenuState | null>(null)
   const [modelKey, setModelKey] = useState('')
-  const [status, setStatus] = useState<ChatStatus>('ready')
+  const [isModelUpdating, setIsModelUpdating] = useState(false)
   const { providers } = useModelSettings()
   const { permission } = usePermissionSettings()
   const { mcpServers, openPluginSettings, skills } = usePluginSettings()
@@ -100,16 +114,19 @@ export function ChatComposer({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isComposingRef = useRef(false)
   const promptInputShellRef = useRef<HTMLDivElement>(null)
-  const timersRef = useRef<number[]>([])
+  const submitPendingRef = useRef(false)
   const modelGroups = getSelectableModelGroups(providers)
   const selectableModels = modelGroups.flatMap((group) => group.models)
   const selectedModelKey = resolveModelSelectionKey(
     modelGroups,
-    modelKey,
+    modelKey || initialModelKey || '',
     initialModelId,
   )
   const selectedModel = selectableModels.find(
     (model) => model.key === selectedModelKey,
+  )
+  const selectedProvider = modelGroups.find((group) =>
+    group.models.some((model) => model.key === selectedModelKey),
   )
   const capabilityGroups = menuState
     ? getComposerCapabilityGroups(
@@ -140,35 +157,35 @@ export function ChatComposer({
   )
   const ActiveModeIcon = activeMode?.id === 'command-plan' ? Bulb : Terminal
 
-  const clearTimers = useCallback(() => {
-    timersRef.current.forEach((timer) => window.clearTimeout(timer))
-    timersRef.current = []
-  }, [])
-
   useEffect(() => {
     attachmentsRef.current = attachments
   }, [attachments])
 
   useEffect(() => {
     return () => {
-      clearTimers()
       attachmentsRef.current.forEach(revokeAttachmentUrl)
     }
-  }, [clearTimers])
+  }, [])
 
   const handleStop = () => {
-    clearTimers()
-    setStatus('ready')
+    onStop?.()
   }
 
-  const handleSubmit = () => {
-    if (menuState) return
+  const handleSubmit = async () => {
+    if (menuState || submitPendingRef.current) return
 
     const message = value.trim()
 
     if (
       status !== 'ready' ||
+      isDisabled ||
+      isModelUpdating ||
       !selectedModel ||
+      !selectedProvider ||
+      !workspaces.some(
+        (workspace) =>
+          workspace.id === composerWorkspace.workspaceId && workspace.available,
+      ) ||
       hasUnavailableContext ||
       (!message &&
         attachments.length === 0 &&
@@ -177,14 +194,22 @@ export function ChatComposer({
       return
     }
 
-    onSubmit?.({
-      attachments: attachments.map(({ file }) => file),
-      contextItems,
-      message,
-      modelId: selectedModel.id,
-      permission,
-      workspaceId: composerWorkspace.workspaceId,
-    })
+    submitPendingRef.current = true
+    let accepted = false
+    try {
+      accepted = await onSubmit({
+        attachments: attachments.map(({ file }) => file),
+        contextItems,
+        message,
+        modelId: selectedModel.id,
+        permission,
+        providerId: selectedProvider.id,
+        workspaceId: composerWorkspace.workspaceId,
+      })
+    } finally {
+      submitPendingRef.current = false
+    }
+    if (!accepted) return
 
     attachments.forEach(revokeAttachmentUrl)
     setAttachments([])
@@ -192,13 +217,31 @@ export function ChatComposer({
       currentItems.filter(isComposerModeContext),
     )
     onValueChange('')
-    setStatus('submitted')
-    clearTimers()
+  }
 
-    timersRef.current.push(
-      window.setTimeout(() => setStatus('streaming'), 350),
-      window.setTimeout(() => setStatus('ready'), 1600),
+  const handleModelChange = async (nextKey: string) => {
+    if (nextKey === selectedModelKey || isModelUpdating) return
+    const nextModel = selectableModels.find((model) => model.key === nextKey)
+    const nextProvider = modelGroups.find((group) =>
+      group.models.some((model) => model.key === nextKey),
     )
+    if (!nextModel || !nextProvider) return
+
+    const previousKey = selectedModelKey
+    setModelKey(nextKey)
+    if (!onModelChange) return
+
+    setIsModelUpdating(true)
+    let accepted = false
+    try {
+      accepted = await onModelChange({
+        modelId: nextModel.id,
+        providerId: nextProvider.id,
+      })
+    } finally {
+      setIsModelUpdating(false)
+    }
+    if (!accepted) setModelKey(previousKey)
   }
 
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -371,7 +414,13 @@ export function ChatComposer({
 
   const isGenerating = status === 'submitted' || status === 'streaming'
   const canSend = Boolean(
+    !isDisabled &&
+    !isModelUpdating &&
     selectedModel &&
+    workspaces.some(
+      (workspace) =>
+        workspace.id === composerWorkspace.workspaceId && workspace.available,
+    ) &&
     !hasUnavailableContext &&
     (value.trim() || attachments.length || transientContextItems.length),
   )
@@ -420,6 +469,12 @@ export function ChatComposer({
               </p>
             ) : null}
 
+            {error ? (
+              <p className="px-4 pt-1 text-xs text-danger" role="alert">
+                {error}
+              </p>
+            ) : null}
+
             <div
               className={`flex min-w-0 items-start gap-2 px-4 pb-16 ${attachments.length > 0 || hasUnavailableContext ? 'pt-1' : 'pt-4'}`}
             >
@@ -432,6 +487,7 @@ export function ChatComposer({
               <PromptInput.TextArea
                 aria-label="消息输入"
                 className="!m-0 !min-h-7 min-w-24 flex-1 !rounded-none !px-0 !pt-0 !pb-0 !text-base !leading-7"
+                disabled={isDisabled}
                 placeholder="你想了解什么？"
                 onCompositionEnd={handleCompositionEnd}
                 onCompositionStart={() => {
@@ -493,10 +549,10 @@ export function ChatComposer({
             <PromptInput.ToolbarEnd className="gap-1">
               <ComposerModelMenu
                 groups={modelGroups}
-                isDisabled={isGenerating}
+                isDisabled={isDisabled || isGenerating || isModelUpdating}
                 selectedKey={selectedModelKey}
                 selectedName={selectedModel?.name}
-                onChange={setModelKey}
+                onChange={(key) => void handleModelChange(key)}
               />
               <PromptInput.Send
                 aria-label={isGenerating ? '停止生成' : '发送消息'}

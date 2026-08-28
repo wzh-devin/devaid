@@ -4,13 +4,13 @@
   "version": "0.0.0",
   "packageManager": "pnpm@11.1.2",
   "scripts": {
-    "dev": "pnpm --filter @devaid/llm build && pnpm --parallel --filter @devaid/llm --filter @devaid/server --filter @devaid/web dev",
-    "build": "pnpm --filter @devaid/llm build && pnpm --filter @devaid/server build && pnpm --filter @devaid/web build",
-    "test": "pnpm --filter @devaid/llm build && pnpm --filter @devaid/llm test && pnpm --filter @devaid/server test && pnpm --filter @devaid/web test",
-    "typecheck": "pnpm --filter @devaid/llm typecheck && pnpm --filter @devaid/server typecheck && pnpm --filter @devaid/web typecheck",
-    "lint": "pnpm --filter @devaid/llm lint && pnpm --filter @devaid/server lint && pnpm --filter @devaid/web lint",
-    "format": "pnpm --filter @devaid/llm format && pnpm --filter @devaid/server format && pnpm --filter @devaid/web format",
-    "format:check": "pnpm --filter @devaid/llm format:check && pnpm --filter @devaid/server format:check && pnpm --filter @devaid/web format:check",
+    "dev": "pnpm --filter @devaid/llm build && pnpm --filter @devaid/agent-runtime build && pnpm --parallel --filter @devaid/llm --filter @devaid/agent-runtime --filter @devaid/server --filter @devaid/web dev",
+    "build": "pnpm --filter @devaid/llm build && pnpm --filter @devaid/agent-runtime build && pnpm --filter @devaid/server build && pnpm --filter @devaid/web build",
+    "test": "pnpm --filter @devaid/llm build && pnpm --filter @devaid/agent-runtime build && pnpm --filter @devaid/llm test && pnpm --filter @devaid/agent-runtime test && pnpm --filter @devaid/server test && pnpm --filter @devaid/web test",
+    "typecheck": "pnpm --filter @devaid/llm typecheck && pnpm --filter @devaid/agent-runtime typecheck && pnpm --filter @devaid/server typecheck && pnpm --filter @devaid/web typecheck",
+    "lint": "pnpm --filter @devaid/llm lint && pnpm --filter @devaid/agent-runtime lint && pnpm --filter @devaid/server lint && pnpm --filter @devaid/web lint",
+    "format": "pnpm --filter @devaid/llm format && pnpm --filter @devaid/agent-runtime format && pnpm --filter @devaid/server format && pnpm --filter @devaid/web format",
+    "format:check": "pnpm --filter @devaid/llm format:check && pnpm --filter @devaid/agent-runtime format:check && pnpm --filter @devaid/server format:check && pnpm --filter @devaid/web format:check",
     "preview": "pnpm --filter @devaid/web preview"
   }
 }

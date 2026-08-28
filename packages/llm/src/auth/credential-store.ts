@@ -67,21 +67,9 @@ function parseDocument(source: string): CredentialDocument {
   return { credentials: credentials as Record<string, Credential>, version: 1 }
 }
 
-/** 返回当前平台的 Devaid 应用数据目录。 */
+/** 返回当前用户统一的 Devaid 本地数据目录。 */
 export function getDefaultDataDirectory() {
-  if (process.platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'Devaid')
-  }
-  if (process.platform === 'win32') {
-    return join(
-      process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'),
-      'Devaid',
-    )
-  }
-  return join(
-    process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'),
-    'devaid',
-  )
+  return join(homedir(), '.devaid')
 }
 
 /** LLM 包使用的版本化、本地原子文件凭证存储。 */
