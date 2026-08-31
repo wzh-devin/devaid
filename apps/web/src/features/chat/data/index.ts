@@ -7,6 +7,8 @@ export type {
   ChatActivePage,
   ChatAssistantStatus,
   ChatMessage,
+  ChatMessageActivity,
+  ChatMessageActivityPart,
   ChatMessageAttachment,
   ChatMessageImage,
   ChatMessageReasoning,

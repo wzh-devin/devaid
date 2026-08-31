@@ -2,7 +2,10 @@ import type {
   AgentRunEventVo,
   AgentSessionMessagePageVo,
   AgentSessionVo,
+  PendingToolApprovalVo,
 } from '../types/index.ts'
+import type { ApprovalDecision } from '../../message/index.ts'
+import type { PermissionId } from '../../../settings/index.ts'
 
 interface CreateAgentSessionInput {
   modelId: string
@@ -71,6 +74,56 @@ function toRunEvent(value: unknown): AgentRunEventVo {
     case 'reasoning_delta':
       if (typeof event.delta === 'string') {
         return { delta: event.delta, type: event.type }
+      }
+      break
+    case 'tool_start':
+      if (
+        typeof event.toolCallId === 'string' &&
+        typeof event.toolName === 'string'
+      ) {
+        return {
+          input: event.input,
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          type: 'tool_start',
+        }
+      }
+      break
+    case 'tool_end':
+      if (
+        typeof event.toolCallId === 'string' &&
+        typeof event.toolName === 'string' &&
+        typeof event.isError === 'boolean'
+      ) {
+        return {
+          isError: event.isError,
+          output: event.output,
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          type: 'tool_end',
+        }
+      }
+      break
+    case 'tool_approval_required':
+      if (
+        typeof event.approvalId === 'string' &&
+        (event.kind === 'edit' || event.kind === 'read') &&
+        typeof event.path === 'string' &&
+        typeof event.title === 'string' &&
+        typeof event.toolCallId === 'string' &&
+        (event.toolName === 'edit' ||
+          event.toolName === 'read' ||
+          event.toolName === 'write')
+      ) {
+        return {
+          approvalId: event.approvalId,
+          kind: event.kind,
+          path: event.path,
+          title: event.title,
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          type: 'tool_approval_required',
+        }
       }
       break
     case 'usage':
@@ -183,14 +236,36 @@ export const listAgentSessionMessages = (
 export const abortAgentSession = (sessionId: string) =>
   request<void>(`${sessionPath(sessionId)}/abort`, { method: 'POST' })
 
+/** 查询断线或刷新后仍在等待的服务端工具审批。 */
+export const getPendingToolApproval = (sessionId: string) =>
+  request<PendingToolApprovalVo | undefined>(
+    `${sessionPath(sessionId)}/tool-approvals/pending`,
+  )
+
+/** 决议服务端保存的原始工具调用，不允许客户端替换参数。 */
+export const resolveToolApproval = (
+  sessionId: string,
+  approvalId: string,
+  decision: ApprovalDecision,
+) =>
+  request<void>(
+    `${sessionPath(sessionId)}/tool-approvals/${encodeURIComponent(approvalId)}`,
+    {
+      body: JSON.stringify({ decision }),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    },
+  )
+
 /** 消费 POST SSE；EventSource 不支持 POST，因此直接使用浏览器流。 */
 export async function streamAgentMessage(
   sessionId: string,
   content: string,
+  permission: PermissionId,
   onEvent: (event: AgentRunEventVo) => void,
 ) {
   const response = await fetch(`${sessionPath(sessionId)}/messages/stream`, {
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, permission }),
     headers: { 'content-type': 'application/json' },
     method: 'POST',
   })

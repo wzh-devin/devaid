@@ -44,6 +44,7 @@ export interface ChatMessageTool {
   label?: string
   output?: unknown
   state: ToolPartState
+  toolCallId?: string
   toolName: string
 }
 
@@ -72,8 +73,24 @@ export interface ChatMessageAttachment {
 
 export type ChatAssistantStatus = 'complete' | 'skeleton' | 'streaming'
 
+export type ChatMessageActivityPart =
+  | { reasoning: ChatMessageReasoning; type: 'reasoning' }
+  | { text: string; type: 'text' }
+  | { tool: ChatMessageTool; type: 'tool' }
+
+export interface ChatMessageActivity {
+  endedAt?: number
+  hasError?: boolean
+  parts?: readonly ChatMessageActivityPart[]
+  reasoning?: ChatMessageReasoning
+  startedAt?: number
+  text?: string
+  tools: readonly ChatMessageTool[]
+}
+
 export interface ChatMessage {
   actions?: 'full' | 'minimal'
+  activity?: ChatMessageActivity
   attachments?: readonly ChatMessageAttachment[]
   contextItems?: readonly ComposerContextItem[]
   avatar?: {
@@ -86,6 +103,7 @@ export interface ChatMessage {
   listItems?: readonly string[]
   loaderLabel?: string
   markdown?: string
+  parts?: readonly ChatMessageActivityPart[]
   reasoning?: ChatMessageReasoning
   role: 'assistant' | 'user'
   showAvatar?: boolean

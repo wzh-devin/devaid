@@ -1,1 +1,1 @@
-export type ApprovalDecision = 'approve-once' | 'approve-thread' | 'reject'
+export type ApprovalDecision = 'approve-once' | 'reject'

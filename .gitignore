@@ -28,6 +28,13 @@ dist-ssr
 # Docs
 .template-design
 /.agents/
-/.devin-project-harness/
 AGENTS.md
 .impeccable
+.oh-my-harness-docs
+
+# Tests stay local and are not committed.
+**/*.test.*
+**/*.spec.*
+**/test/
+**/tests/
+**/__tests__/

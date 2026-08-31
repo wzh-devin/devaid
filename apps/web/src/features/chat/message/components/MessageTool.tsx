@@ -17,7 +17,6 @@ import {
   ToolFallbackTrigger,
 } from '../../../../components/assistant-ui/index.ts'
 import type { ChatMessageTool } from '../../data/chat-types.ts'
-import type { ApprovalDecision } from '../types/approval.ts'
 import { getToolArgsText, getToolStatus } from '../utils/tool-display.ts'
 
 const TOOL_ICONS: Record<NonNullable<ChatMessageTool['kind']>, ElementType> = {
@@ -31,28 +30,16 @@ const TOOL_ICONS: Record<NonNullable<ChatMessageTool['kind']>, ElementType> = {
 }
 
 interface MessageToolProps {
-  approvalDecision?: ApprovalDecision
   tool: ChatMessageTool
 }
 
 /** 展示普通工具调用或待审批工具状态。 */
-export function MessageTool({ approvalDecision, tool }: MessageToolProps) {
+export function MessageTool({ tool }: MessageToolProps) {
   if (tool.state === 'requires-action') {
-    const approvalLabel =
-      approvalDecision === 'approve-once'
-        ? '已允许一次'
-        : approvalDecision === 'approve-thread'
-          ? '已允许此对话'
-          : approvalDecision === 'reject'
-            ? '已拒绝'
-            : '等待审批'
-
     return (
       <div className="flex min-h-7 items-center gap-2 text-sm text-muted">
         <WrenchIcon className="size-4 shrink-0" />
-        <span>
-          {approvalLabel} · {tool.label ?? tool.toolName}
-        </span>
+        <span>等待审批 · {tool.label ?? tool.toolName}</span>
       </div>
     )
   }

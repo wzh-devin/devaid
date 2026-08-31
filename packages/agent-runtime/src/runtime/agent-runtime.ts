@@ -1,3 +1,18 @@
+import { randomUUID } from 'node:crypto'
+import { isAbsolute } from 'node:path'
+
+import {
+  ToolPolicy,
+  ToolPolicyError,
+  type ApprovalDecision,
+  type ApprovalResolution,
+  type PendingToolApproval,
+  type ToolPermission,
+} from '@devaid/agent-policy'
+import {
+  createWorkspaceTools,
+  WORKSPACE_TOOLS_SYSTEM_PROMPT,
+} from '@devaid/agent-tools'
 import { ModelServiceError, type ModelService } from '@devaid/llm'
 import {
   Agent,
@@ -26,6 +41,11 @@ interface ActiveOperation {
   finish(): void
   kind: 'mutation' | 'run'
   settled: Promise<void>
+}
+
+interface AgentRuntimeToolOptions {
+  policy: ToolPolicy
+  protectedRoots?: readonly string[]
 }
 
 function createUserMessage(content: string): UserMessage {
@@ -59,20 +79,40 @@ function runtimeEventError(
   }
 }
 
+function safeToolInput(input: unknown) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {}
+  const path = (input as Record<string, unknown>).path
+  if (
+    typeof path !== 'string' ||
+    path.includes('\0') ||
+    path.split(/[\\/]/u).includes('..') ||
+    isAbsolute(path) ||
+    path === '~' ||
+    path.startsWith('~/') ||
+    path.startsWith('file:')
+  ) {
+    return typeof path === 'string' ? { path: '[blocked path]' } : {}
+  }
+  return { path }
+}
+
 /** 协调 Pi Agent 与 Session 生命周期。 */
 export class AgentRuntime {
   private readonly active = new Map<string, ActiveOperation>()
   private readonly models: ModelService
   private readonly sessions: AgentSessionService
+  private readonly toolOptions?: AgentRuntimeToolOptions
   private closed = false
 
   constructor(
     models: ModelService,
     repository: AgentSessionRepository,
     projection?: AgentSessionProjection,
+    toolOptions?: AgentRuntimeToolOptions,
   ) {
     this.models = models
     this.sessions = new AgentSessionService(repository, projection)
+    this.toolOptions = toolOptions
   }
 
   async createSession(input: {
@@ -122,6 +162,10 @@ export class AgentRuntime {
 
   async getMessages(id: string, options: { before?: number; limit: number }) {
     this.assertOpen()
+    if (!this.active.has(id)) {
+      const opened = await this.sessions.open(id)
+      await this.repairInterruptedTools(opened.session, opened.entries, id)
+    }
     return this.sessions.messages(id, options)
   }
 
@@ -135,12 +179,50 @@ export class AgentRuntime {
     }
   }
 
-  prompt(id: string, content: string) {
-    return this.startRun(id, createUserMessage(content))
+  prompt(
+    id: string,
+    content: string,
+    permission: ToolPermission = 'read-only',
+  ) {
+    return this.startRun(id, permission, createUserMessage(content))
   }
 
-  continue(id: string) {
-    return this.startRun(id)
+  continue(id: string, permission: ToolPermission = 'read-only') {
+    return this.startRun(id, permission)
+  }
+
+  pendingApproval(id: string) {
+    this.assertOpen()
+    return this.toolOptions?.policy.pendingForSession(id)[0]
+  }
+
+  async resolveApproval(
+    id: string,
+    approvalId: string,
+    decision: ApprovalDecision,
+  ) {
+    this.assertOpen()
+    if (!this.toolOptions) {
+      throw new AgentRuntimeError(
+        'APPROVAL_NOT_FOUND',
+        '待审批工具调用不存在。',
+        404,
+      )
+    }
+    try {
+      await this.toolOptions.policy.resolveApproval(id, approvalId, decision)
+    } catch (error) {
+      if (error instanceof ToolPolicyError) {
+        const status =
+          error.code === 'APPROVAL_NOT_FOUND'
+            ? 404
+            : error.code === 'APPROVAL_ALREADY_RESOLVED'
+              ? 409
+              : 500
+        throw new AgentRuntimeError(error.code, error.message, status)
+      }
+      throw error
+    }
   }
 
   abort(id: string) {
@@ -170,6 +252,7 @@ export class AgentRuntime {
 
   private async startRun(
     id: string,
+    permission: ToolPermission,
     incoming?: UserMessage,
   ): Promise<AgentRun> {
     this.assertOpen()
@@ -182,10 +265,14 @@ export class AgentRuntime {
         opened.config.modelId,
       )
       operation.controller.signal.throwIfAborted()
-      let entries = opened.entries
+      let entries = await this.repairInterruptedTools(
+        opened.session,
+        opened.entries,
+        id,
+      )
       try {
         entries = await compactSessionIfNeeded({
-          entries: opened.entries,
+          entries,
           ...(incoming ? { incoming } : {}),
           model,
           models: this.models.models,
@@ -210,25 +297,57 @@ export class AgentRuntime {
       }
       operation.controller.signal.throwIfAborted()
 
-      const agent = new Agent({
-        initialState: {
-          messages: context.messages,
-          model,
-          systemPrompt: '',
-          thinkingLevel: 'off',
-          tools: [],
-        },
-        sessionId: id,
-        streamFn: (streamModel, streamContext, options) =>
-          this.models.models.streamSimple(streamModel, streamContext, options),
-      })
-      operation.agent = agent
       const events = new EventStream<AgentRuntimeEvent, void>(
         (event) => event.type === 'done' || event.type === 'error',
         () => undefined,
       )
+      const runId = randomUUID()
+      const workspaceTools = this.toolOptions
+        ? await createWorkspaceTools({
+            cwd: opened.metadata.cwd,
+            onApprovalRequested: async (approval) => {
+              await this.appendApprovalRequested(opened.session, approval)
+              events.push(this.approvalEvent(approval))
+            },
+            onApprovalResolved: (resolution) =>
+              this.appendApprovalResolved(opened.session, resolution),
+            permission,
+            policy: this.toolOptions.policy,
+            protectedRoots: this.toolOptions.protectedRoots,
+            runId,
+            sessionId: id,
+          })
+        : undefined
+      if (workspaceTools) {
+        await opened.session.appendCustomEntry('devaid_policy_run', {
+          activeToolNames: workspaceTools.tools.map((tool) => tool.name),
+          permission,
+          runId,
+        })
+      }
+      const agent = new Agent({
+        beforeToolCall: workspaceTools?.beforeToolCall,
+        initialState: {
+          messages: context.messages,
+          model,
+          systemPrompt: workspaceTools ? WORKSPACE_TOOLS_SYSTEM_PROMPT : '',
+          thinkingLevel: 'off',
+          tools: workspaceTools?.tools ?? [],
+        },
+        sessionId: id,
+        streamFn: (streamModel, streamContext, options) =>
+          this.models.models.streamSimple(streamModel, streamContext, options),
+        toolExecution: 'sequential',
+      })
+      operation.agent = agent
       void this.executeRun({
         agent,
+        cleanupTools: workspaceTools
+          ? async () => {
+              await workspaceTools.cleanup()
+              this.toolOptions?.policy.clearRun(runId)
+            }
+          : undefined,
         events,
         ...(incoming ? { incoming } : {}),
         operation,
@@ -257,6 +376,7 @@ export class AgentRuntime {
 
   private async executeRun(options: {
     agent: Agent
+    cleanupTools?: () => Promise<void>
     events: EventStream<AgentRuntimeEvent, void>
     incoming?: AgentMessage
     operation: ActiveOperation
@@ -357,6 +477,7 @@ export class AgentRuntime {
       if (persisted && !projected) {
         await this.sessions.changed(options.sessionId)
       }
+      await options.cleanupTools?.()
       options.events.end()
     }
   }
@@ -365,13 +486,159 @@ export class AgentRuntime {
     event: AgentEvent,
     events: EventStream<AgentRuntimeEvent, void>,
   ) {
-    if (event.type !== 'message_update') return
-    const update = event.assistantMessageEvent
-    if (update.type === 'text_delta') {
-      events.push({ delta: update.delta, type: 'text_delta' })
-    } else if (update.type === 'thinking_delta') {
-      events.push({ delta: update.delta, type: 'reasoning_delta' })
+    if (event.type === 'message_update') {
+      const update = event.assistantMessageEvent
+      if (update.type === 'text_delta') {
+        events.push({ delta: update.delta, type: 'text_delta' })
+      } else if (update.type === 'thinking_delta') {
+        events.push({ delta: update.delta, type: 'reasoning_delta' })
+      }
+    } else if (event.type === 'tool_execution_start') {
+      events.push({
+        input: safeToolInput(event.args),
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        type: 'tool_start',
+      })
+    } else if (event.type === 'tool_execution_end') {
+      events.push({
+        isError: event.isError,
+        output: event.result?.content,
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        type: 'tool_end',
+      })
     }
+  }
+
+  private approvalEvent(approval: PendingToolApproval) {
+    const kind: 'edit' | 'read' = approval.toolName === 'read' ? 'read' : 'edit'
+    return {
+      approvalId: approval.approvalId,
+      kind,
+      path: approval.path,
+      title: `允许 AI 助手${kind === 'read' ? '读取' : '修改'} ${approval.path} 吗？`,
+      toolCallId: approval.toolCallId,
+      toolName: approval.toolName,
+      type: 'tool_approval_required' as const,
+    }
+  }
+
+  private async appendApprovalRequested(
+    session: Awaited<ReturnType<AgentSessionService['open']>>['session'],
+    approval: PendingToolApproval,
+  ) {
+    await session.appendCustomEntry('devaid_tool_approval_requested', {
+      approvalId: approval.approvalId,
+      effect: approval.effect,
+      path: approval.path,
+      runId: approval.runId,
+      toolCallId: approval.toolCallId,
+      toolName: approval.toolName,
+    })
+  }
+
+  private async appendApprovalResolved(
+    session: Awaited<ReturnType<AgentSessionService['open']>>['session'],
+    resolution: ApprovalResolution,
+  ) {
+    await session.appendCustomEntry('devaid_tool_approval_resolved', {
+      approvalId: resolution.approvalId,
+      decision: resolution.decision,
+      reason: resolution.reason,
+      runId: resolution.runId,
+      toolCallId: resolution.toolCallId,
+    })
+  }
+
+  private async repairInterruptedTools(
+    session: Awaited<ReturnType<AgentSessionService['open']>>['session'],
+    entries: Awaited<ReturnType<AgentSessionService['open']>>['entries'],
+    sessionId: string,
+  ) {
+    const completedToolCalls = new Set(
+      entries.flatMap((entry) =>
+        entry.type === 'message' && entry.message.role === 'toolResult'
+          ? [entry.message.toolCallId]
+          : [],
+      ),
+    )
+    const resolvedApprovals = new Set(
+      entries.flatMap((entry) => {
+        if (
+          entry.type !== 'custom' ||
+          entry.customType !== 'devaid_tool_approval_resolved' ||
+          !entry.data ||
+          typeof entry.data !== 'object' ||
+          Array.isArray(entry.data)
+        ) {
+          return []
+        }
+        const approvalId = (entry.data as Record<string, unknown>).approvalId
+        return typeof approvalId === 'string' ? [approvalId] : []
+      }),
+    )
+    const approvalByToolCall = new Map<string, string>()
+    for (const entry of entries) {
+      if (
+        entry.type !== 'custom' ||
+        entry.customType !== 'devaid_tool_approval_requested' ||
+        !entry.data ||
+        typeof entry.data !== 'object' ||
+        Array.isArray(entry.data)
+      ) {
+        continue
+      }
+      const data = entry.data as Record<string, unknown>
+      if (
+        typeof data.approvalId === 'string' &&
+        typeof data.toolCallId === 'string'
+      ) {
+        approvalByToolCall.set(data.toolCallId, data.approvalId)
+      }
+    }
+    const interrupted: { id: string; name: string }[] = []
+    for (const entry of entries) {
+      if (entry.type !== 'message' || entry.message.role !== 'assistant') {
+        continue
+      }
+      for (const content of entry.message.content) {
+        if (
+          content.type === 'toolCall' &&
+          !completedToolCalls.has(content.id)
+        ) {
+          interrupted.push({ id: content.id, name: content.name })
+        }
+      }
+    }
+    if (!interrupted.length) return entries
+
+    for (const toolCall of interrupted) {
+      const approvalId = approvalByToolCall.get(toolCall.id)
+      if (approvalId && !resolvedApprovals.has(approvalId)) {
+        await session.appendCustomEntry('devaid_tool_approval_resolved', {
+          approvalId,
+          decision: 'reject',
+          reason: 'server-restarted',
+          toolCallId: toolCall.id,
+        })
+      }
+      await session.appendMessage({
+        content: [
+          {
+            text: 'Tool execution was interrupted by a server restart and was not retried.',
+            type: 'text',
+          },
+        ],
+        isError: true,
+        role: 'toolResult',
+        timestamp: Date.now(),
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+      })
+    }
+    await this.sessions.changed(sessionId)
+    return session.findEntriesOnBranch({ order: 'oldestFirst' })
   }
 
   private reserve(id: string, kind: ActiveOperation['kind']) {

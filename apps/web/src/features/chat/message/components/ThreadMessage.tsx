@@ -5,23 +5,20 @@ import { TextShimmer } from '@agile-avocation/ui-pro/text-shimmer'
 import type { ChatMessage } from '../../data/chat-types.ts'
 import { ChatAttachmentList } from '../../composer/components/ChatAttachmentList.tsx'
 import { ComposerContextBar } from '../../composer/components/ComposerContextBar.tsx'
-import type { ApprovalDecision } from '../types/approval.ts'
 import { MessageActions } from './MessageActions.tsx'
 import { MessageMarkdown } from './MessageMarkdown.tsx'
 import { MessageSource } from './MessageSource.tsx'
 import { MessageTool } from './MessageTool.tsx'
 import { ReasoningPanel } from './ReasoningPanel.tsx'
+import { ToolActivity } from './ToolActivity.tsx'
 
 interface ThreadMessageProps {
-  approvalDecisions?: Readonly<Record<string, ApprovalDecision>>
+  compact?: boolean
   message: ChatMessage
 }
 
 /** 根据消息契约组合用户消息或助手消息。 */
-export function ThreadMessage({
-  approvalDecisions,
-  message,
-}: ThreadMessageProps) {
+export function ThreadMessage({ compact, message }: ThreadMessageProps) {
   if (message.role === 'user') {
     return (
       <ChatMessagePrimitive.User>
@@ -46,6 +43,22 @@ export function ThreadMessage({
     )
   }
 
+  if (message.activity) {
+    return (
+      <ChatMessagePrimitive.Assistant>
+        <ChatMessagePrimitive.Avatar
+          alt={message.avatar?.alt ?? '助手'}
+          fallback={message.avatar?.fallback ?? 'AI'}
+          show={message.showAvatar ?? false}
+          src={message.avatar?.src}
+        />
+        <ChatMessagePrimitive.Body>
+          <ToolActivity activity={message.activity} status={message.status} />
+        </ChatMessagePrimitive.Body>
+      </ChatMessagePrimitive.Assistant>
+    )
+  }
+
   return (
     <ChatMessagePrimitive.Assistant>
       <ChatMessagePrimitive.Avatar
@@ -61,11 +74,7 @@ export function ThreadMessage({
         ) : null}
 
         {message.tools?.map((tool, index) => (
-          <MessageTool
-            key={`${tool.toolName}-${index}`}
-            approvalDecision={approvalDecisions?.[`${message.id}:${index}`]}
-            tool={tool}
-          />
+          <MessageTool key={`${tool.toolName}-${index}`} tool={tool} />
         ))}
 
         {message.status === 'streaming' ? (
@@ -136,7 +145,7 @@ export function ThreadMessage({
             ))}
 
             {message.actions ? (
-              <MessageActions variant={message.actions} />
+              <MessageActions compact={compact} variant={message.actions} />
             ) : null}
           </>
         ) : null}

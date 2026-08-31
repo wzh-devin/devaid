@@ -20,6 +20,8 @@
     "format:check": "prettier --check src package.json tsconfig.json tsconfig.build.json"
   },
   "dependencies": {
+    "@devaid/agent-policy": "workspace:*",
+    "@devaid/agent-tools": "workspace:*",
     "@devaid/llm": "workspace:*",
     "@earendil-works/pi-agent-core": "0.84.3",
     "@earendil-works/pi-ai": "0.84.3"

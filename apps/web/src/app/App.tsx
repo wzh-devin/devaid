@@ -38,6 +38,8 @@ export function App() {
     isCreating,
     loadingIds,
     loadThread,
+    pendingApprovals,
+    resolveApproval,
     sendMessage,
     statuses,
     threads,
@@ -145,7 +147,7 @@ export function App() {
       try {
         const thread = await createSession(payload)
         setSelectedWorkspaceId(payload.workspaceId)
-        void sendMessage(thread.id, payload.message)
+        void sendMessage(thread.id, payload.message, payload.permission)
         commitNavigation(`/${thread.id}`)
         return true
       } catch {
@@ -157,7 +159,7 @@ export function App() {
 
   const handleThreadSubmit = useCallback(
     (thread: ChatThread, payload: ChatSubmitPayload) => {
-      void sendMessage(thread.id, payload.message)
+      void sendMessage(thread.id, payload.message, payload.permission)
       return true
     },
     [sendMessage],
@@ -175,12 +177,16 @@ export function App() {
             key={activePage.thread.id}
             error={errors[activePage.thread.id]}
             isLoading={loadingIds.has(activePage.thread.id)}
+            pendingApproval={pendingApprovals[activePage.thread.id]}
             status={statuses[activePage.thread.id] ?? 'ready'}
             thread={activePage.thread}
             onModelChange={(selection) =>
               updateModel(activePage.thread.id, selection)
             }
             onStop={() => void abort(activePage.thread.id)}
+            onApprovalResolve={(decision) =>
+              resolveApproval(activePage.thread.id, decision)
+            }
             onSubmit={(payload) =>
               handleThreadSubmit(activePage.thread, payload)
             }

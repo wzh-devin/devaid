@@ -30,12 +30,29 @@ export interface AgentSessionDetailDto extends AgentSessionDto {
 export interface AgentSessionMessageDto {
   content: string
   entryId: string
+  parts?: AgentSessionMessagePartDto[]
   reasoning?: string
   role: 'assistant' | 'user'
   seq: number
   stopReason?: string
   timestamp: number
+  tools?: AgentSessionToolDto[]
 }
+
+export interface AgentSessionToolDto {
+  errorText?: string
+  input: Record<string, unknown>
+  kind: 'edit' | 'read'
+  output?: string
+  state: 'input-available' | 'output-available' | 'output-error'
+  toolCallId: string
+  toolName: string
+}
+
+export type AgentSessionMessagePartDto =
+  | { reasoning: string; type: 'reasoning' }
+  | { text: string; type: 'text' }
+  | { tool: AgentSessionToolDto; type: 'tool' }
 
 export interface AgentSessionMessagePageDto {
   items: AgentSessionMessageDto[]

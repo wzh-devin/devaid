@@ -3,6 +3,28 @@ export type AgentRuntimeEvent =
   | { delta: string; type: 'text_delta' }
   | { delta: string; type: 'reasoning_delta' }
   | {
+      input: unknown
+      toolCallId: string
+      toolName: string
+      type: 'tool_start'
+    }
+  | {
+      isError: boolean
+      output: unknown
+      toolCallId: string
+      toolName: string
+      type: 'tool_end'
+    }
+  | {
+      approvalId: string
+      kind: 'edit' | 'read'
+      path: string
+      title: string
+      toolCallId: string
+      toolName: 'edit' | 'read' | 'write'
+      type: 'tool_approval_required'
+    }
+  | {
       cacheRead: number
       cacheWrite: number
       input: number

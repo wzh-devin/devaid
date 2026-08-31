@@ -1,3 +1,4 @@
+import { ToolPolicy } from '@devaid/agent-policy'
 import { AgentRuntime } from '@devaid/agent-runtime'
 import {
   createProviderModels,
@@ -39,7 +40,10 @@ export async function createApp(
   const sessionIndex = await SessionIndex.create(dataDirectory, repository)
   const workspaces = new WorkspaceStore(dataDirectory)
   await workspaces.list()
-  const runtime = new AgentRuntime(models, repository, sessionIndex)
+  const runtime = new AgentRuntime(models, repository, sessionIndex, {
+    policy: new ToolPolicy(),
+    protectedRoots: [dataDirectory],
+  })
   let closed = false
   app.close = async () => {
     if (closed) return

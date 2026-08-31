@@ -1,12 +1,18 @@
 {
-  "name": "@devaid/server",
+  "name": "@devaid/agent-tools",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "dev": "node --watch --experimental-strip-types src/main.ts",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
     "test": "node --test --experimental-strip-types src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
@@ -15,14 +21,9 @@
   },
   "dependencies": {
     "@devaid/agent-policy": "workspace:*",
-    "@devaid/agent-runtime": "workspace:*",
-    "@devaid/llm": "workspace:*",
-    "@earendil-works/pi-agent-core": "0.84.3",
-    "@hono/node-server": "2.1.1",
-    "hono": "4.13.5"
+    "@earendil-works/pi-agent-core": "0.84.3"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "0.84.3",
     "@types/node": "^24.13.3",
     "oxlint": "^1.75.0",
     "prettier": "^3.9.6",

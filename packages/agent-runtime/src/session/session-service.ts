@@ -1,3 +1,5 @@
+import { isAbsolute } from 'node:path'
+
 import type {
   Entry,
   JsonValue,
@@ -8,7 +10,11 @@ import type {
   SessionStats,
 } from '@earendil-works/pi-agent-core'
 import { SessionError } from '@earendil-works/pi-agent-core'
-import type { AssistantMessage, UserMessage } from '@earendil-works/pi-ai'
+import type {
+  AssistantMessage,
+  ToolResultMessage,
+  UserMessage,
+} from '@earendil-works/pi-ai'
 
 import { AgentRuntimeError } from '../error/agent-runtime-error.ts'
 
@@ -62,12 +68,29 @@ export interface AgentSessionDetail extends AgentSessionInfo {
 export interface AgentSessionMessage {
   content: string
   entryId: string
+  parts?: AgentSessionMessagePart[]
   reasoning?: string
   role: 'assistant' | 'user'
   seq: number
   stopReason?: string
   timestamp: number
+  tools?: AgentSessionTool[]
 }
+
+export interface AgentSessionTool {
+  errorText?: string
+  input: Record<string, unknown>
+  kind: 'edit' | 'read'
+  output?: string
+  state: 'input-available' | 'output-available' | 'output-error'
+  toolCallId: string
+  toolName: string
+}
+
+export type AgentSessionMessagePart =
+  | { reasoning: string; type: 'reasoning' }
+  | { text: string; type: 'text' }
+  | { tool: AgentSessionTool; type: 'tool' }
 
 export interface AgentSessionMessagePage {
   items: AgentSessionMessage[]
@@ -150,9 +173,75 @@ function messageText(message: AssistantMessage | UserMessage) {
     .join('')
 }
 
-function toMessage(entry: Extract<Entry, { type: 'message' }>) {
+function toolResultText(message: ToolResultMessage) {
+  return message.content
+    .filter((content) => content.type === 'text')
+    .map((content) => content.text)
+    .join('')
+}
+
+function safeToolInput(input: Record<string, unknown>) {
+  const path = typeof input.path === 'string' ? input.path : undefined
+  if (
+    path === undefined ||
+    path.includes('\0') ||
+    path.split(/[\\/]/u).includes('..') ||
+    isAbsolute(path) ||
+    path === '~' ||
+    path.startsWith('~/') ||
+    path.startsWith('file:')
+  ) {
+    return path === undefined ? {} : { path: '[blocked path]' }
+  }
+  return { path }
+}
+
+function toSessionTool(
+  toolCall: Extract<AssistantMessage['content'][number], { type: 'toolCall' }>,
+  toolResults: ReadonlyMap<string, ToolResultMessage>,
+): AgentSessionTool {
+  const result = toolResults.get(toolCall.id)
+  const output = result ? toolResultText(result) : undefined
+  return {
+    ...(result?.isError && output ? { errorText: output } : {}),
+    input: safeToolInput(toolCall.arguments),
+    kind: toolCall.name === 'read' ? 'read' : 'edit',
+    ...(!result?.isError && output ? { output } : {}),
+    state: result
+      ? result.isError
+        ? 'output-error'
+        : 'output-available'
+      : 'input-available',
+    toolCallId: toolCall.id,
+    toolName: toolCall.name,
+  }
+}
+
+function toMessage(
+  entry: Extract<Entry, { type: 'message' }>,
+  toolResults: ReadonlyMap<string, ToolResultMessage>,
+) {
   const { message } = entry
   if (message.role !== 'user' && message.role !== 'assistant') return undefined
+  const parts: AgentSessionMessagePart[] =
+    message.role === 'assistant'
+      ? message.content.flatMap<AgentSessionMessagePart>((content) => {
+          if (content.type === 'text') {
+            return content.text ? [{ text: content.text, type: 'text' }] : []
+          }
+          if (content.type === 'thinking') {
+            return content.thinking
+              ? [{ reasoning: content.thinking, type: 'reasoning' }]
+              : []
+          }
+          return [
+            {
+              tool: toSessionTool(content, toolResults),
+              type: 'tool',
+            },
+          ]
+        })
+      : []
   const reasoning =
     message.role === 'assistant'
       ? message.content
@@ -160,14 +249,20 @@ function toMessage(entry: Extract<Entry, { type: 'message' }>) {
           .map((content) => content.thinking)
           .join('')
       : ''
+  const tools =
+    message.role === 'assistant'
+      ? parts.flatMap((part) => (part.type === 'tool' ? [part.tool] : []))
+      : []
   return {
     content: messageText(message),
     entryId: entry.id,
+    ...(parts.length ? { parts } : {}),
     ...(reasoning ? { reasoning } : {}),
     role: message.role,
     seq: entry.seq,
     ...(message.role === 'assistant' ? { stopReason: message.stopReason } : {}),
     timestamp: message.timestamp,
+    ...(tools.length ? { tools } : {}),
   } satisfies AgentSessionMessage
 }
 
@@ -359,13 +454,23 @@ export class AgentSessionService {
         order: 'newestFirst',
         type: 'message',
       })
+      const toolResults = new Map(
+        entries.flatMap((entry) => {
+          if (entry.type !== 'message' || entry.message.role !== 'toolResult') {
+            return []
+          }
+          return [[entry.message.toolCallId, entry.message] as const]
+        }),
+      )
       const candidates = entries
         .filter(
           (entry) =>
             entry.type === 'message' &&
             (options.before === undefined || entry.seq < options.before),
         )
-        .map((entry) => toMessage(entry as Extract<Entry, { type: 'message' }>))
+        .map((entry) =>
+          toMessage(entry as Extract<Entry, { type: 'message' }>, toolResults),
+        )
         .filter((message) => message !== undefined)
       const selected = candidates.slice(0, options.limit)
       return {

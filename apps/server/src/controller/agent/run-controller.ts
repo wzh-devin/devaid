@@ -1,3 +1,4 @@
+import { isToolPermission, type ApprovalDecision } from '@devaid/agent-policy'
 import type { AgentRun, AgentRuntime } from '@devaid/agent-runtime'
 import type { Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
@@ -14,14 +15,31 @@ function parseMessage(value: unknown): SendAgentMessageDto | undefined {
   }
   const record = value as Record<string, unknown>
   if (
-    Object.keys(record).some((key) => key !== 'content') ||
+    Object.keys(record).some(
+      (key) => key !== 'content' && key !== 'permission',
+    ) ||
     typeof record.content !== 'string' ||
     !record.content.trim() ||
-    record.content.length > 1_000_000
+    record.content.length > 1_000_000 ||
+    !isToolPermission(record.permission)
   ) {
     return undefined
   }
-  return { content: record.content }
+  return { content: record.content, permission: record.permission }
+}
+
+function parseApprovalDecision(value: unknown): ApprovalDecision | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  const record = value as Record<string, unknown>
+  if (
+    Object.keys(record).some((key) => key !== 'decision') ||
+    (record.decision !== 'approve-once' && record.decision !== 'reject')
+  ) {
+    return undefined
+  }
+  return record.decision
 }
 
 function streamRun(context: Context, run: AgentRun) {
@@ -49,6 +67,23 @@ export function createAgentRunController(runtime: AgentRuntime) {
         return agentErrorResponse(context, error)
       }
     },
+    pendingApproval: (context: Context) => {
+      try {
+        const approval = runtime.pendingApproval(context.req.param('id')!)
+        if (!approval) return context.body(null, 204)
+        const kind = approval.toolName === 'read' ? 'read' : 'edit'
+        return context.json({
+          approvalId: approval.approvalId,
+          kind,
+          path: approval.path,
+          title: `允许 AI 助手${kind === 'read' ? '读取' : '修改'} ${approval.path} 吗？`,
+          toolCallId: approval.toolCallId,
+          toolName: approval.toolName,
+        })
+      } catch (error) {
+        return agentErrorResponse(context, error)
+      }
+    },
     continue: async (context: Context) => {
       try {
         return streamRun(
@@ -60,9 +95,19 @@ export function createAgentRunController(runtime: AgentRuntime) {
       }
     },
     prompt: async (context: Context) => {
-      const input = parseMessage(
-        await context.req.json<unknown>().catch(() => undefined),
-      )
+      const body = await context.req.json<unknown>().catch(() => undefined)
+      if (
+        body &&
+        typeof body === 'object' &&
+        !Array.isArray(body) &&
+        !isToolPermission((body as Record<string, unknown>).permission)
+      ) {
+        return context.json(
+          { code: 'INVALID_AGENT_PERMISSION', message: 'Agent 权限无效。' },
+          400,
+        )
+      }
+      const input = parseMessage(body)
       if (!input) {
         return context.json(
           { code: 'INVALID_SESSION_REQUEST', message: '消息内容无效。' },
@@ -72,8 +117,33 @@ export function createAgentRunController(runtime: AgentRuntime) {
       try {
         return streamRun(
           context,
-          await runtime.prompt(context.req.param('id')!, input.content),
+          await runtime.prompt(
+            context.req.param('id')!,
+            input.content,
+            input.permission,
+          ),
         )
+      } catch (error) {
+        return agentErrorResponse(context, error)
+      }
+    },
+    resolveApproval: async (context: Context) => {
+      const decision = parseApprovalDecision(
+        await context.req.json<unknown>().catch(() => undefined),
+      )
+      if (!decision) {
+        return context.json(
+          { code: 'INVALID_APPROVAL_REQUEST', message: '审批决议无效。' },
+          400,
+        )
+      }
+      try {
+        await runtime.resolveApproval(
+          context.req.param('id')!,
+          context.req.param('approvalId')!,
+          decision,
+        )
+        return context.body(null, 204)
       } catch (error) {
         return agentErrorResponse(context, error)
       }

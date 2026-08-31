@@ -9,8 +9,8 @@ import {
   ChatComposer,
   type ChatSubmitPayload,
   type ChatThread,
-  findPendingToolApproval,
   findWorkspaceByThreadId,
+  type PendingToolApprovalVo,
   ThreadMessage,
   useChatWorkspace,
 } from '../../features/chat/index.ts'
@@ -22,6 +22,8 @@ interface ChatPageProps {
   status: ChatStatus
   thread: ChatThread
   onStop: () => void
+  pendingApproval?: PendingToolApprovalVo
+  onApprovalResolve: (decision: ApprovalDecision) => Promise<void>
   onModelChange: (
     selection: Pick<ChatSubmitPayload, 'modelId' | 'providerId'>,
   ) => Promise<boolean>
@@ -33,17 +35,15 @@ export function ChatPage({
   error,
   isLoading,
   onModelChange,
+  onApprovalResolve,
   onStop,
   onSubmit,
+  pendingApproval,
   status,
   thread,
 }: ChatPageProps) {
   const [draft, setDraft] = useState('')
   const [capabilityError, setCapabilityError] = useState('')
-  const [approvalDecisions, setApprovalDecisions] = useState<
-    Record<string, ApprovalDecision>
-  >({})
-  const [approvedThreadTools, setApprovedThreadTools] = useState<string[]>([])
   const appLayout = useAppLayout()
   const { selectedWorkspaceId, workspaces } = useChatWorkspace()
   const [fixedWorkspaceId] = useState(
@@ -53,25 +53,16 @@ export function ChatPage({
   const initialModelKey = thread.providerId
     ? `${thread.providerId}:${thread.modelId}`
     : undefined
-  const pendingApproval = findPendingToolApproval(
-    thread.messages,
-    Object.keys(approvalDecisions),
-    approvedThreadTools,
-  )
-
-  const handleApprovalResolve = (decision: ApprovalDecision) => {
-    if (!pendingApproval) return
-    if (decision === 'approve-thread') {
-      setApprovedThreadTools((toolNames) => [
-        ...toolNames,
-        pendingApproval.tool.toolName,
-      ])
-    }
-    setApprovalDecisions((decisions) => ({
-      ...decisions,
-      [pendingApproval.key]: decision,
-    }))
-  }
+  const pendingTool = pendingApproval
+    ? {
+        approval: { title: pendingApproval.title },
+        input: { path: pendingApproval.path },
+        kind: pendingApproval.kind,
+        state: 'requires-action' as const,
+        toolCallId: pendingApproval.toolCallId,
+        toolName: pendingApproval.toolName,
+      }
+    : undefined
 
   const handleSubmit = (payload: ChatSubmitPayload) => {
     if (payload.attachments.length || payload.contextItems.length) {
@@ -126,13 +117,21 @@ export function ChatPage({
                 {!isLoading && thread.messages.length === 0 && !error ? (
                   <p className="text-sm text-muted">发送消息开始这段会话。</p>
                 ) : null}
-                {thread.messages.map((message) => (
-                  <ThreadMessage
-                    key={message.id}
-                    approvalDecisions={approvalDecisions}
-                    message={message}
-                  />
-                ))}
+                {thread.messages.map((message, index) => {
+                  const compact = Boolean(
+                    message.role === 'assistant' &&
+                    !message.activity &&
+                    thread.messages[index - 1]?.activity,
+                  )
+                  return (
+                    <div
+                      className={compact ? '-mt-8' : undefined}
+                      key={message.id}
+                    >
+                      <ThreadMessage compact={compact} message={message} />
+                    </div>
+                  )
+                })}
               </div>
               <ChatConversation.ScrollAnchor />
             </ChatConversation.Content>
@@ -149,10 +148,10 @@ export function ChatPage({
 
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
-          {pendingApproval ? (
+          {pendingTool ? (
             <ApprovalPrompt
-              tool={pendingApproval.tool}
-              onResolve={handleApprovalResolve}
+              tool={pendingTool}
+              onResolve={(decision) => void onApprovalResolve(decision)}
             />
           ) : (
             <ChatComposer

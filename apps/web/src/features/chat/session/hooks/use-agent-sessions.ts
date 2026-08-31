@@ -1,23 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import type { ChatSubmitPayload } from '../../composer/index.ts'
-import type { ChatMessage, ChatThread } from '../../data/index.ts'
+import type {
+  ChatMessage,
+  ChatMessageActivityPart,
+  ChatThread,
+} from '../../data/index.ts'
+import type { ApprovalDecision } from '../../message/index.ts'
 import {
   abortAgentSession,
   createAgentSession,
   getAgentSession,
+  getPendingToolApproval,
   listAgentSessionMessages,
   listAgentSessions,
+  resolveToolApproval,
   streamAgentMessage,
   updateAgentSessionModel,
 } from '../api/index.ts'
-import { toChatMessage, toChatThread } from '../data/index.ts'
+import { toChatMessages, toChatThread } from '../data/index.ts'
+import type { PendingToolApprovalVo } from '../types/index.ts'
 
 const messageTitle = (message: string) =>
   message.trim().replace(/\s+/gu, ' ').slice(0, 60)
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '会话请求失败，请重试。'
+
+const toolOutputText = (output: unknown) => {
+  if (typeof output === 'string') return output
+  if (!Array.isArray(output)) return String(output ?? '')
+  return output
+    .flatMap((part) =>
+      part && typeof part === 'object' && 'text' in part
+        ? [String(part.text)]
+        : [],
+    )
+    .join('\n')
+}
 
 const streamingAssistant = (id: string): ChatMessage => ({
   actions: 'full',
@@ -27,6 +47,153 @@ const streamingAssistant = (id: string): ChatMessage => ({
   text: '',
 })
 
+/** 读取流式消息的当前活动块，并兼容尚未携带 parts 的消息。 */
+const messageActivityParts = (
+  message: ChatMessage,
+): ChatMessageActivityPart[] => {
+  const parts = message.activity?.parts ?? message.parts
+  if (parts) return [...parts]
+  const reasoning = message.activity?.reasoning ?? message.reasoning
+  const text = message.activity?.text ?? message.text
+  const tools = message.activity?.tools ?? message.tools ?? []
+  return [
+    ...(reasoning ? [{ reasoning, type: 'reasoning' as const }] : []),
+    ...(text ? [{ text, type: 'text' as const }] : []),
+    ...tools.map((tool) => ({ tool, type: 'tool' as const })),
+  ]
+}
+
+/** 合并相邻流式文本，跨工具调用时创建新的文本块。 */
+const appendTextPart = (
+  parts: readonly ChatMessageActivityPart[],
+  delta: string,
+) => {
+  const next = [...parts]
+  const last = next.at(-1)
+  if (last?.type === 'text') {
+    next[next.length - 1] = { ...last, text: `${last.text}${delta}` }
+  } else {
+    next.push({ text: delta, type: 'text' })
+  }
+  return next
+}
+
+/** 合并相邻流式推理，跨工具调用时创建新的推理块。 */
+const appendReasoningPart = (
+  parts: readonly ChatMessageActivityPart[],
+  delta: string,
+) => {
+  const next = [...parts]
+  const last = next.at(-1)
+  if (last?.type === 'reasoning') {
+    const steps = [...last.reasoning.steps]
+    const lastStep = steps.at(-1)
+    if (lastStep) {
+      steps[steps.length - 1] = {
+        ...lastStep,
+        content: `${lastStep.content}${delta}`,
+      }
+    } else {
+      steps.push({ content: delta, label: '思考过程' })
+    }
+    next[next.length - 1] = {
+      ...last,
+      reasoning: { ...last.reasoning, steps },
+    }
+  } else {
+    next.push({
+      reasoning: {
+        defaultExpanded: false,
+        steps: [{ content: delta, label: '思考过程' }],
+      },
+      type: 'reasoning',
+    })
+  }
+  return next
+}
+
+/** 按事件到达位置追加流式文本，并合并相邻文本块。 */
+export const appendStreamingText = (
+  message: ChatMessage,
+  delta: string,
+): ChatMessage => {
+  const parts = appendTextPart(messageActivityParts(message), delta)
+  if (message.activity) {
+    return {
+      ...message,
+      activity: {
+        ...message.activity,
+        parts,
+        text: `${message.activity.text ?? ''}${delta}`,
+      },
+    }
+  }
+  return { ...message, parts, text: `${message.text ?? ''}${delta}` }
+}
+
+/** 按事件到达位置追加流式推理，并合并相邻推理块。 */
+export const appendStreamingReasoning = (
+  message: ChatMessage,
+  delta: string,
+): ChatMessage => {
+  const reasoning = message.activity
+    ? message.activity.reasoning
+    : message.reasoning
+  const content = reasoning?.steps[0]?.content ?? ''
+  const nextReasoning = {
+    defaultExpanded: !message.activity,
+    steps: [{ content: `${content}${delta}`, label: '思考过程' }],
+  }
+  const parts = appendReasoningPart(messageActivityParts(message), delta)
+  if (message.activity) {
+    return {
+      ...message,
+      activity: { ...message.activity, parts, reasoning: nextReasoning },
+    }
+  }
+  return { ...message, parts, reasoning: nextReasoning }
+}
+
+/** 将同一 toolCallId 的流式状态合并到当前 Assistant 消息。 */
+export const updateStreamingTool = (
+  message: ChatMessage,
+  tool: NonNullable<ChatMessage['tools']>[number],
+  startedAt: number,
+) => {
+  const tools = [...(message.activity?.tools ?? message.tools ?? [])]
+  const index = tools.findIndex(
+    (candidate) => candidate.toolCallId === tool.toolCallId,
+  )
+  if (index === -1) tools.push(tool)
+  else tools[index] = { ...tools[index], ...tool }
+  const parts = messageActivityParts(message)
+  const partIndex = parts.findIndex(
+    (part) => part.type === 'tool' && part.tool.toolCallId === tool.toolCallId,
+  )
+  if (partIndex === -1) parts.push({ tool, type: 'tool' })
+  else {
+    const part = parts[partIndex]
+    if (part?.type === 'tool') {
+      parts[partIndex] = { ...part, tool: { ...part.tool, ...tool } }
+    }
+  }
+  return {
+    ...message,
+    actions: undefined,
+    activity: {
+      parts,
+      reasoning: message.activity?.reasoning ?? message.reasoning,
+      startedAt: message.activity?.startedAt ?? startedAt,
+      text: message.activity?.text ?? message.text,
+      tools,
+    },
+    reasoning: undefined,
+    parts: undefined,
+    text: undefined,
+    tools: undefined,
+  }
+}
+
 /** 协调真实 Session 列表、历史消息和当前 POST SSE 运行。 */
 export function useAgentSessions() {
   const [threads, setThreads] = useState<ChatThread[]>([])
@@ -35,6 +202,9 @@ export function useAgentSessions() {
   const [globalError, setGlobalError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [loadingIds, setLoadingIds] = useState<ReadonlySet<string>>(new Set())
+  const [pendingApprovals, setPendingApprovals] = useState<
+    Record<string, PendingToolApprovalVo | undefined>
+  >({})
   const statusRef = useRef<Record<string, ChatStatus>>({})
   const loadingRef = useRef(new Map<string, Promise<void>>())
 
@@ -64,9 +234,9 @@ export function useAgentSessions() {
         before = page.nextCursor ?? undefined
       } while (before !== undefined)
 
-      const chatMessages = messages
-        .sort((left, right) => left.seq - right.seq)
-        .map(toChatMessage)
+      const chatMessages = toChatMessages(
+        messages.sort((left, right) => left.seq - right.seq),
+      )
       updateThread(sessionId, (thread) => ({
         ...thread,
         messages: chatMessages,
@@ -115,8 +285,13 @@ export function useAgentSessions() {
       const task = Promise.all([
         getAgentSession(sessionId),
         listAgentSessionMessages(sessionId),
+        getPendingToolApproval(sessionId),
       ])
-        .then(([session, firstPage]) => {
+        .then(([session, firstPage, pendingApproval]) => {
+          setPendingApprovals((current) => ({
+            ...current,
+            [sessionId]: pendingApproval,
+          }))
           const next = toChatThread(session)
           const firstMessages = firstPage.items
           setThreads((threads) => {
@@ -132,9 +307,9 @@ export function useAgentSessions() {
               : [updated, ...threads]
           })
           if (firstPage.nextCursor === null) {
-            const messages = firstMessages
-              .sort((left, right) => left.seq - right.seq)
-              .map(toChatMessage)
+            const messages = toChatMessages(
+              firstMessages.sort((left, right) => left.seq - right.seq),
+            )
             updateThread(sessionId, (thread) => ({ ...thread, messages }))
             return
           }
@@ -214,7 +389,12 @@ export function useAgentSessions() {
   )
 
   const sendMessage = useCallback(
-    async (sessionId: string, message: string) => {
+    async (
+      sessionId: string,
+      message: string,
+      permission: ChatSubmitPayload['permission'],
+    ) => {
+      const startedAt = Date.now()
       const userId = `pending-user-${crypto.randomUUID()}`
       const assistantId = `pending-assistant-${crypto.randomUUID()}`
       setErrors((current) => ({ ...current, [sessionId]: '' }))
@@ -233,7 +413,7 @@ export function useAgentSessions() {
       let terminal = false
       let runError = ''
       try {
-        await streamAgentMessage(sessionId, message, (event) => {
+        await streamAgentMessage(sessionId, message, permission, (event) => {
           switch (event.type) {
             case 'start':
               setStatus(sessionId, 'streaming')
@@ -243,7 +423,7 @@ export function useAgentSessions() {
                 ...thread,
                 messages: thread.messages.map((item) =>
                   item.id === assistantId
-                    ? { ...item, text: `${item.text ?? ''}${event.delta}` }
+                    ? appendStreamingText(item, event.delta)
                     : item,
                 ),
               }))
@@ -251,30 +431,123 @@ export function useAgentSessions() {
             case 'reasoning_delta':
               updateThread(sessionId, (thread) => ({
                 ...thread,
-                messages: thread.messages.map((item) => {
-                  if (item.id !== assistantId) return item
-                  const content = item.reasoning?.steps[0]?.content ?? ''
-                  return {
-                    ...item,
-                    reasoning: {
-                      defaultExpanded: true,
-                      steps: [
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId
+                    ? appendStreamingReasoning(item, event.delta)
+                    : item,
+                ),
+              }))
+              break
+            case 'tool_start':
+              updateThread(sessionId, (thread) => ({
+                ...thread,
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId
+                    ? updateStreamingTool(
+                        item,
                         {
-                          content: `${content}${event.delta}`,
-                          label: '思考过程',
+                          input: event.input,
+                          kind: event.toolName === 'read' ? 'read' : 'edit',
+                          state: 'input-available',
+                          toolCallId: event.toolCallId,
+                          toolName: event.toolName,
                         },
-                      ],
-                    },
-                  }
-                }),
+                        startedAt,
+                      )
+                    : item,
+                ),
+              }))
+              break
+            case 'tool_end':
+              setPendingApprovals((current) =>
+                current[sessionId]?.toolCallId === event.toolCallId
+                  ? { ...current, [sessionId]: undefined }
+                  : current,
+              )
+              updateThread(sessionId, (thread) => ({
+                ...thread,
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId
+                    ? updateStreamingTool(
+                        item,
+                        {
+                          ...(event.isError
+                            ? { errorText: toolOutputText(event.output) }
+                            : { output: event.output }),
+                          input:
+                            (item.activity?.tools ?? item.tools)?.find(
+                              (tool) => tool.toolCallId === event.toolCallId,
+                            )?.input ?? {},
+                          kind: event.toolName === 'read' ? 'read' : 'edit',
+                          state: event.isError
+                            ? 'output-error'
+                            : 'output-available',
+                          toolCallId: event.toolCallId,
+                          toolName: event.toolName,
+                        },
+                        startedAt,
+                      )
+                    : item,
+                ),
+              }))
+              break
+            case 'tool_approval_required':
+              setPendingApprovals((current) => ({
+                ...current,
+                [sessionId]: event,
+              }))
+              updateThread(sessionId, (thread) => ({
+                ...thread,
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId
+                    ? updateStreamingTool(
+                        item,
+                        {
+                          approval: { title: event.title },
+                          input: { path: event.path },
+                          kind: event.kind,
+                          state: 'requires-action',
+                          toolCallId: event.toolCallId,
+                          toolName: event.toolName,
+                        },
+                        startedAt,
+                      )
+                    : item,
+                ),
               }))
               break
             case 'done':
               terminal = true
+              updateThread(sessionId, (thread) => ({
+                ...thread,
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId && item.activity
+                    ? {
+                        ...item,
+                        activity: { ...item.activity, endedAt: Date.now() },
+                      }
+                    : item,
+                ),
+              }))
               break
             case 'error':
               terminal = true
               runError = event.message
+              updateThread(sessionId, (thread) => ({
+                ...thread,
+                messages: thread.messages.map((item) =>
+                  item.id === assistantId && item.activity
+                    ? {
+                        ...item,
+                        activity: {
+                          ...item.activity,
+                          endedAt: Date.now(),
+                          hasError: true,
+                        },
+                      }
+                    : item,
+                ),
+              }))
               break
             case 'usage':
               break
@@ -287,6 +560,11 @@ export function useAgentSessions() {
 
       try {
         await loadMessages(sessionId)
+        const pendingApproval = await getPendingToolApproval(sessionId)
+        setPendingApprovals((current) => ({
+          ...current,
+          [sessionId]: pendingApproval,
+        }))
       } catch (error) {
         runError ||= errorMessage(error)
       } finally {
@@ -310,10 +588,34 @@ export function useAgentSessions() {
           [sessionId]: errorMessage(error),
         }))
       } finally {
+        setPendingApprovals((current) => ({
+          ...current,
+          [sessionId]: undefined,
+        }))
         setStatus(sessionId, 'ready')
       }
     },
     [loadMessages, setStatus],
+  )
+
+  const resolveApproval = useCallback(
+    async (sessionId: string, decision: ApprovalDecision) => {
+      const approval = pendingApprovals[sessionId]
+      if (!approval) return
+      try {
+        await resolveToolApproval(sessionId, approval.approvalId, decision)
+        setPendingApprovals((current) => ({
+          ...current,
+          [sessionId]: undefined,
+        }))
+      } catch (error) {
+        setErrors((current) => ({
+          ...current,
+          [sessionId]: errorMessage(error),
+        }))
+      }
+    },
+    [pendingApprovals],
   )
 
   return {
@@ -324,7 +626,9 @@ export function useAgentSessions() {
     isCreating,
     loadingIds,
     loadThread,
+    pendingApprovals,
     refreshSessions,
+    resolveApproval,
     sendMessage,
     statuses,
     threads,

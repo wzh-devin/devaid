@@ -8,7 +8,6 @@ import {
 export const PERMISSION_OPTIONS = [
   { id: 'read-only', label: 'Read Only' },
   { id: 'workspace-write', label: 'Workspace Write' },
-  { id: 'danger-full-access', label: 'Full access' },
 ] as const
 
 export type PermissionId = (typeof PERMISSION_OPTIONS)[number]['id']

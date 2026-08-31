@@ -1,6 +1,6 @@
 export {
-  findPendingToolApproval,
+  getToolActivitySummary,
   getToolArgsText,
   getToolStatus,
 } from './tool-display.ts'
-export type { PendingToolApproval } from './tool-display.ts'
+export type { ToolActivitySummary } from './tool-display.ts'

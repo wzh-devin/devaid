@@ -6,7 +6,14 @@ export type {
   AgentSessionDetail,
   AgentSessionInfo,
   AgentSessionMessage,
+  AgentSessionMessagePart,
+  AgentSessionTool,
   AgentSessionMessagePage,
   AgentSessionProjection,
   AgentSessionRepository,
 } from './session/session-service.ts'
+export type {
+  ApprovalDecision,
+  PendingToolApproval,
+  ToolPermission,
+} from '@devaid/agent-policy'

@@ -1,13 +1,14 @@
 import { ChatMessageActions } from '@agile-avocation/ui-pro/chat-message-actions'
 
 interface MessageActionsProps {
+  compact?: boolean
   variant: 'full' | 'minimal'
 }
 
 /** 展示模板消息的复制、反馈和更多操作入口。 */
-export function MessageActions({ variant }: MessageActionsProps) {
+export function MessageActions({ compact, variant }: MessageActionsProps) {
   return (
-    <ChatMessageActions>
+    <ChatMessageActions className={compact ? 'mt-1' : undefined}>
       <ChatMessageActions.Copy aria-label="复制" tooltip="复制" />
       {variant === 'full' ? (
         <>

@@ -1,9 +1,4 @@
-import {
-  ChevronDown,
-  Shield,
-  ShieldCheck,
-  ShieldExclamation,
-} from '@gravity-ui/icons'
+import { ChevronDown, Shield, ShieldCheck } from '@gravity-ui/icons'
 import { Dropdown } from '@heroui/react'
 import {
   PERMISSION_OPTIONS,
@@ -12,7 +7,6 @@ import {
 } from '../../../settings/index.ts'
 
 const PERMISSION_ICONS = {
-  'danger-full-access': ShieldExclamation,
   'read-only': ShieldCheck,
   'workspace-write': Shield,
 } as const

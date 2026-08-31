@@ -1,34 +1,74 @@
 import type { ToolCallMessagePartStatus } from '@assistant-ui/react'
-import type { ChatMessage, ChatMessageTool } from '../../data/chat-types.ts'
+import type {
+  ChatAssistantStatus,
+  ChatMessageTool,
+} from '../../data/chat-types.ts'
 
-export interface PendingToolApproval {
-  key: string
-  tool: ChatMessageTool
+export interface ToolActivitySummary {
+  label: string
+  state: 'complete' | 'failed' | 'running'
 }
 
-/** 返回尚未在当前前端演示中处理的首个待审批工具。 */
-export const findPendingToolApproval = (
-  messages: readonly ChatMessage[],
-  resolvedKeys: readonly string[],
-  approvedToolNames: readonly string[] = [],
-): PendingToolApproval | undefined => {
-  for (const message of messages) {
-    const toolIndex = message.tools?.findIndex(
-      (tool, index) =>
-        tool.state === 'requires-action' &&
-        !resolvedKeys.includes(`${message.id}:${index}`) &&
-        !approvedToolNames.includes(tool.toolName),
-    )
+export const isToolActivityRunning = (
+  tools: readonly ChatMessageTool[],
+  status?: ChatAssistantStatus,
+  hasEnded = false,
+) =>
+  !hasEnded &&
+  (status === 'streaming' ||
+    tools.some(
+      (tool) =>
+        tool.state === 'input-streaming' ||
+        tool.state === 'input-available' ||
+        tool.state === 'requires-action',
+    ))
 
-    if (toolIndex !== undefined && toolIndex >= 0) {
-      return {
-        key: `${message.id}:${toolIndex}`,
-        tool: message.tools![toolIndex],
-      }
+/** 将 Agent Run 毫秒耗时格式化为紧凑中文。 */
+export const formatToolActivityDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return [
+    hours ? `${hours}小时` : '',
+    minutes ? `${minutes}分钟` : '',
+    `${seconds}秒`,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+/** 汇总折叠工具活动的运行、完成和失败状态。 */
+export const getToolActivitySummary = (
+  tools: readonly ChatMessageTool[],
+  status?: ChatAssistantStatus,
+  hasRunError = false,
+  durationMs?: number,
+  hasEnded = false,
+): ToolActivitySummary => {
+  const durationLabel =
+    durationMs === undefined
+      ? undefined
+      : `用时 ${formatToolActivityDuration(durationMs)}`
+  const failureCount = tools.filter(
+    (tool) => tool.state === 'output-error',
+  ).length
+  if (hasRunError || failureCount) {
+    return {
+      label: durationLabel ? `运行失败 · ${durationLabel}` : '工具运行失败',
+      state: 'failed',
     }
   }
 
-  return undefined
+  const isRunning = isToolActivityRunning(tools, status, hasEnded)
+  if (isRunning) {
+    return { label: durationLabel ?? '正在使用工具', state: 'running' }
+  }
+
+  return {
+    label: durationLabel ?? '工具活动',
+    state: 'complete',
+  }
 }
 
 /** 将现有工具状态投影到 assistant-ui ToolFallback 状态。 */

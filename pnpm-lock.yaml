@@ -10,6 +10,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@devaid/agent-policy':
+        specifier: workspace:*
+        version: link:../../packages/agent-policy
       '@devaid/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
@@ -136,8 +139,29 @@ importers:
         specifier: ^8.2.0
         version: 8.2.2(@types/node@24.13.3)(jiti@2.7.0)(yaml@2.9.0)
 
+  packages/agent-policy:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      oxlint:
+        specifier: ^1.75.0
+        version: 1.79.0
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+
   packages/agent-runtime:
     dependencies:
+      '@devaid/agent-policy':
+        specifier: workspace:*
+        version: link:../agent-policy
+      '@devaid/agent-tools':
+        specifier: workspace:*
+        version: link:../agent-tools
       '@devaid/llm':
         specifier: workspace:*
         version: link:../llm
@@ -145,6 +169,28 @@ importers:
         specifier: 0.84.3
         version: 0.84.3(ws@8.21.3)(zod@4.4.3)
       '@earendil-works/pi-ai':
+        specifier: 0.84.3
+        version: 0.84.3(ws@8.21.3)(zod@4.4.3)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      oxlint:
+        specifier: ^1.75.0
+        version: 1.79.0
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+
+  packages/agent-tools:
+    dependencies:
+      '@devaid/agent-policy':
+        specifier: workspace:*
+        version: link:../agent-policy
+      '@earendil-works/pi-agent-core':
         specifier: 0.84.3
         version: 0.84.3(ws@8.21.3)(zod@4.4.3)
     devDependencies:

@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ChevronDown } from '@gravity-ui/icons'
-import { Button, Dropdown, Kbd } from '@heroui/react'
+import { useEffect } from 'react'
+import { Button, Kbd } from '@heroui/react'
 import { HandIcon } from 'lucide-react'
 import type { ChatMessageTool } from '../../data/chat-types.ts'
 import type { ApprovalDecision } from '../types/approval.ts'
@@ -12,11 +11,8 @@ interface ApprovalPromptProps {
 
 /** 在聊天底栏展示当前待处理工具的 Codex 风格权限请求。 */
 export function ApprovalPrompt({ tool, onResolve }: ApprovalPromptProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      if (isMenuOpen) return
       if (event.key === 'Escape') {
         event.preventDefault()
         onResolve('reject')
@@ -29,7 +25,7 @@ export function ApprovalPrompt({ tool, onResolve }: ApprovalPromptProps) {
 
     document.addEventListener('keydown', handleShortcut)
     return () => document.removeEventListener('keydown', handleShortcut)
-  }, [isMenuOpen, onResolve])
+  }, [onResolve])
 
   const title = tool.approval?.title ?? `允许 AI 助手使用 ${tool.toolName} 吗？`
 
@@ -68,47 +64,16 @@ export function ApprovalPrompt({ tool, onResolve }: ApprovalPromptProps) {
           <Kbd className="ml-0.5 h-5 min-w-7 px-1 text-[10px]">Esc</Kbd>
         </Button>
 
-        <div className="flex overflow-hidden rounded-full bg-foreground text-background">
-          <Button
-            className="h-9 min-h-0 rounded-none bg-transparent px-3.5 text-sm text-background hover:bg-background/10"
-            type="button"
-            onPress={() => onResolve('approve-once')}
-          >
-            允许一次
-            <Kbd className="ml-0.5 h-5 min-w-6 bg-background/10 px-1 text-[10px] text-background">
-              <Kbd.Abbr keyValue="enter" />
-            </Kbd>
-          </Button>
-          <Dropdown isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <Dropdown.Trigger
-              aria-label="选择授权范围"
-              className="flex size-9 min-h-0 min-w-9 items-center justify-center rounded-none border-l border-background/20 bg-transparent p-0 text-background hover:bg-background/10"
-            >
-              <ChevronDown className="size-3.5" />
-            </Dropdown.Trigger>
-            <Dropdown.Popover className="w-40 min-w-40" placement="top end">
-              <Dropdown.Menu
-                aria-label="授权范围"
-                onAction={(key) => onResolve(String(key) as ApprovalDecision)}
-              >
-                <Dropdown.Item
-                  className="min-h-9 py-1 text-sm"
-                  id="approve-once"
-                  textValue="允许一次"
-                >
-                  允许一次
-                </Dropdown.Item>
-                <Dropdown.Item
-                  className="min-h-9 py-1 text-sm"
-                  id="approve-thread"
-                  textValue="允许此对话"
-                >
-                  允许此对话
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown>
-        </div>
+        <Button
+          className="h-9 min-h-0 rounded-full bg-foreground px-3.5 text-sm text-background hover:bg-foreground/90"
+          type="button"
+          onPress={() => onResolve('approve-once')}
+        >
+          允许一次
+          <Kbd className="ml-0.5 h-5 min-w-6 bg-background/10 px-1 text-[10px] text-background">
+            <Kbd.Abbr keyValue="enter" />
+          </Kbd>
+        </Button>
       </div>
     </section>
   )
