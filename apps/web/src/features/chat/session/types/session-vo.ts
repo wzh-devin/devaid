@@ -8,7 +8,9 @@ export interface AgentSessionVo {
 }
 
 export interface AgentSessionMessageVo {
+  attachments?: AgentSessionMessageAttachmentVo[]
   content: string
+  contextItems?: AgentSessionMessageContextItemVo[]
   entryId: string
   parts?: AgentSessionMessagePartVo[]
   reasoning?: string
@@ -22,7 +24,7 @@ export interface AgentSessionMessageVo {
 export interface AgentSessionToolVo {
   errorText?: string
   input: Record<string, unknown>
-  kind: 'edit' | 'read'
+  kind: 'command' | 'edit' | 'read' | 'skill'
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string
@@ -65,6 +67,15 @@ export type AgentRunEventVo =
       type: 'tool_approval_required'
     }
   | {
+      approvalId: string
+      input: { args: string[]; program: string }
+      kind: 'command'
+      title: string
+      toolCallId: string
+      toolName: 'command'
+      type: 'tool_approval_required'
+    }
+  | {
       cacheRead: number
       cacheWrite: number
       input: number
@@ -75,11 +86,24 @@ export type AgentRunEventVo =
   | { entryId: string; stopReason: string; type: 'done' }
   | { code: string; message: string; type: 'error' }
 
-export interface PendingToolApprovalVo {
-  approvalId: string
-  kind: 'edit' | 'read'
-  path: string
-  title: string
-  toolCallId: string
-  toolName: 'edit' | 'read' | 'write'
+export type PendingToolApprovalVo = Extract<
+  AgentRunEventVo,
+  { type: 'tool_approval_required' }
+>
+
+export interface AgentSessionMessageAttachmentVo {
+  id: string
+  mimeType: string
+  name: string
+  size: number
+  src?: string
+}
+
+export interface AgentSessionMessageContextItemVo {
+  description: string
+  id: string
+  kind: 'command' | 'skill'
+  label: string
+  reference: string
+  sourceId: string
 }

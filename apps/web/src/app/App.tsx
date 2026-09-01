@@ -147,7 +147,7 @@ export function App() {
       try {
         const thread = await createSession(payload)
         setSelectedWorkspaceId(payload.workspaceId)
-        void sendMessage(thread.id, payload.message, payload.permission)
+        void sendMessage(thread.id, payload)
         commitNavigation(`/${thread.id}`)
         return true
       } catch {
@@ -159,7 +159,7 @@ export function App() {
 
   const handleThreadSubmit = useCallback(
     (thread: ChatThread, payload: ChatSubmitPayload) => {
-      void sendMessage(thread.id, payload.message, payload.permission)
+      void sendMessage(thread.id, payload)
       return true
     },
     [sendMessage],

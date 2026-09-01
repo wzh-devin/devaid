@@ -8,6 +8,8 @@ export {
 export type {
   ApprovalDecision,
   ApprovalResolution,
+  CommandToolAuthorizationRequest,
+  FileToolAuthorizationRequest,
   PendingToolApproval,
   ToolAuthorizationRequest,
   ToolEffect,

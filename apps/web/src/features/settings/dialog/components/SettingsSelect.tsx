@@ -1,7 +1,6 @@
 import { SelectMenu } from '../../../../components/ui/index.ts'
 
 interface SettingsSelectProps {
-  description?: string
   label: string
   options: readonly { id: string; label: string }[]
   value: string
@@ -10,7 +9,6 @@ interface SettingsSelectProps {
 
 /** 展示通用设置项及其单选菜单。 */
 export function SettingsSelect({
-  description,
   label,
   onChange,
   options,
@@ -20,9 +18,6 @@ export function SettingsSelect({
     <div className="flex flex-col gap-4 border-b border-divider py-6 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="text-base font-medium text-foreground">{label}</p>
-        {description ? (
-          <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
-        ) : null}
       </div>
       <SelectMenu
         ariaLabel={label}

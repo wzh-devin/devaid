@@ -11,7 +11,7 @@ export function createAgentRunRouter(runtime: AgentRuntime) {
   router.post(
     '/:id/messages/stream',
     bodyLimit({
-      maxSize: 2 * 1024 * 1024,
+      maxSize: 22 * 1024 * 1024,
       onError: (context) =>
         context.json(
           { code: 'REQUEST_TOO_LARGE', message: '请求内容过大。' },
@@ -20,6 +20,7 @@ export function createAgentRunRouter(runtime: AgentRuntime) {
     }),
     controller.prompt,
   )
+  router.get('/:id/events/stream', controller.reconnect)
   router.post('/:id/continue/stream', controller.continue)
   router.post('/:id/abort', controller.abort)
   router.get('/:id/tool-approvals/pending', controller.pendingApproval)

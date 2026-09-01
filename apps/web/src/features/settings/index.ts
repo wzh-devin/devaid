@@ -14,6 +14,7 @@ export {
 } from './providers/index.ts'
 export type {
   AssistantSkill,
+  CapabilityCommand,
   McpServer,
   PermissionId,
   PluginSettingsTab,

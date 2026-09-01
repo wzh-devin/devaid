@@ -97,7 +97,6 @@ export function SettingsDialog({
               {activeSection === 'general' ? (
                 <div className="mx-auto max-w-2xl">
                   <SettingsSelect
-                    description="选择新会话默认使用的工作区权限。"
                     label="权限"
                     options={PERMISSION_OPTIONS}
                     value={permission}

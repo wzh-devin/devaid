@@ -25,6 +25,15 @@ export type AgentRuntimeEvent =
       type: 'tool_approval_required'
     }
   | {
+      approvalId: string
+      input: { args: string[]; program: string }
+      kind: 'command'
+      title: string
+      toolCallId: string
+      toolName: 'command'
+      type: 'tool_approval_required'
+    }
+  | {
       cacheRead: number
       cacheWrite: number
       input: number

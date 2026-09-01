@@ -24,6 +24,18 @@ interface ParsedSseFrames {
   remainder: string
 }
 
+export interface StreamAgentMessageInput {
+  attachments: readonly File[]
+  commandId?: string
+  content: string
+  permission: PermissionId
+  skillIds: readonly string[]
+}
+
+export interface ReconnectedAgentRun {
+  completed: Promise<void>
+}
+
 export class AgentSessionApiError extends Error {
   readonly code: string
   readonly status: number
@@ -34,6 +46,23 @@ export class AgentSessionApiError extends Error {
     this.code = code
     this.status = status
   }
+}
+
+const commandInput = (
+  value: unknown,
+): { args: string[]; program: string } | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  const input = value as Record<string, unknown>
+  return typeof input.program === 'string' &&
+    input.program.length > 0 &&
+    input.program.length <= 255 &&
+    !input.program.includes('\0') &&
+    Array.isArray(input.args) &&
+    input.args.every((argument) => typeof argument === 'string')
+    ? { args: input.args as string[], program: input.program }
+    : undefined
 }
 
 const sessionPath = (sessionId: string) =>
@@ -105,6 +134,26 @@ function toRunEvent(value: unknown): AgentRunEventVo {
       }
       break
     case 'tool_approval_required':
+      if (
+        typeof event.approvalId === 'string' &&
+        event.kind === 'command' &&
+        event.toolName === 'command' &&
+        typeof event.title === 'string' &&
+        typeof event.toolCallId === 'string'
+      ) {
+        const input = commandInput(event.input)
+        if (input) {
+          return {
+            approvalId: event.approvalId,
+            input,
+            kind: 'command',
+            title: event.title,
+            toolCallId: event.toolCallId,
+            toolName: 'command',
+            type: 'tool_approval_required',
+          }
+        }
+      }
       if (
         typeof event.approvalId === 'string' &&
         (event.kind === 'edit' || event.kind === 'read') &&
@@ -257,27 +306,11 @@ export const resolveToolApproval = (
     },
   )
 
-/** 消费 POST SSE；EventSource 不支持 POST，因此直接使用浏览器流。 */
-export async function streamAgentMessage(
-  sessionId: string,
-  content: string,
-  permission: PermissionId,
+/** 持续解析 Agent SSE，并把跨网络分块的完整事件交给会话状态层。 */
+async function consumeAgentEventStream(
+  response: Response,
   onEvent: (event: AgentRunEventVo) => void,
 ) {
-  const response = await fetch(`${sessionPath(sessionId)}/messages/stream`, {
-    body: JSON.stringify({ content, permission }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
-  if (!response.ok) {
-    const body = (await response.json().catch(() => undefined)) as
-      { code?: string; message?: string } | undefined
-    throw new AgentSessionApiError(
-      body?.message ?? `请求失败（${response.status}）`,
-      body?.code ?? 'AGENT_REQUEST_FAILED',
-      response.status,
-    )
-  }
   if (!response.body) {
     throw new AgentSessionApiError(
       '浏览器没有收到 Agent 响应流。',
@@ -299,4 +332,62 @@ export async function streamAgentMessage(
   if (remainder.trim()) {
     parseAgentSseFrames(`${remainder}\n\n`).events.forEach(onEvent)
   }
+}
+
+/** 重新订阅页面刷新后仍在后台执行的活跃 Run。 */
+export async function reconnectAgentRun(
+  sessionId: string,
+  onEvent: (event: AgentRunEventVo) => void,
+): Promise<ReconnectedAgentRun | undefined> {
+  const response = await fetch(`${sessionPath(sessionId)}/events/stream`, {
+    headers: { accept: 'text/event-stream' },
+  })
+  if (response.status === 204) return undefined
+  if (!response.ok) {
+    throw new AgentSessionApiError(
+      `请求失败（${response.status}）`,
+      'AGENT_REQUEST_FAILED',
+      response.status,
+    )
+  }
+  return { completed: consumeAgentEventStream(response, onEvent) }
+}
+
+/** 消费 POST SSE；EventSource 不支持 POST，因此直接使用浏览器流。 */
+export async function streamAgentMessage(
+  sessionId: string,
+  input: StreamAgentMessageInput,
+  onEvent: (event: AgentRunEventVo) => void,
+) {
+  const request = {
+    ...(input.commandId ? { commandId: input.commandId } : {}),
+    content: input.content,
+    permission: input.permission,
+    ...(input.skillIds.length ? { skillIds: input.skillIds } : {}),
+  }
+  const body = input.attachments.length
+    ? (() => {
+        const form = new FormData()
+        form.set('request', JSON.stringify(request))
+        input.attachments.forEach((file) => form.append('attachments', file))
+        return form
+      })()
+    : JSON.stringify(request)
+  const response = await fetch(`${sessionPath(sessionId)}/messages/stream`, {
+    body,
+    ...(typeof body === 'string'
+      ? { headers: { 'content-type': 'application/json' } }
+      : {}),
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => undefined)) as
+      { code?: string; message?: string } | undefined
+    throw new AgentSessionApiError(
+      body?.message ?? `请求失败（${response.status}）`,
+      body?.code ?? 'AGENT_REQUEST_FAILED',
+      response.status,
+    )
+  }
+  await consumeAgentEventStream(response, onEvent)
 }

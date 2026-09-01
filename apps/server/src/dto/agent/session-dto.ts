@@ -28,7 +28,9 @@ export interface AgentSessionDetailDto extends AgentSessionDto {
 }
 
 export interface AgentSessionMessageDto {
+  attachments?: AgentSessionMessageAttachmentDto[]
   content: string
+  contextItems?: AgentSessionMessageContextItemDto[]
   entryId: string
   parts?: AgentSessionMessagePartDto[]
   reasoning?: string
@@ -42,7 +44,7 @@ export interface AgentSessionMessageDto {
 export interface AgentSessionToolDto {
   errorText?: string
   input: Record<string, unknown>
-  kind: 'edit' | 'read'
+  kind: 'command' | 'edit' | 'read' | 'skill'
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string
@@ -57,4 +59,21 @@ export type AgentSessionMessagePartDto =
 export interface AgentSessionMessagePageDto {
   items: AgentSessionMessageDto[]
   nextCursor: number | null
+}
+
+export interface AgentSessionMessageAttachmentDto {
+  id: string
+  mimeType: string
+  name: string
+  size: number
+  src?: string
+}
+
+export interface AgentSessionMessageContextItemDto {
+  description: string
+  id: string
+  kind: 'command' | 'skill'
+  label: string
+  reference: string
+  sourceId: string
 }

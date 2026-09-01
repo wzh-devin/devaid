@@ -3,6 +3,7 @@ import type { ModelService, OAuthSessionService } from '@devaid/llm'
 import { Hono } from 'hono'
 
 import { createAgentRunRouter } from './agent/run-router.ts'
+import { createAgentCapabilityRouter } from './agent/capability-router.ts'
 import { createAgentSessionRouter } from './agent/session-router.ts'
 import { createHealthRouter } from './health/health-router.ts'
 import { createCompletionRouter } from './llm/completion-router.ts'
@@ -25,6 +26,10 @@ export function createApiRouter(
   router.route('/ai/completions', createCompletionRouter(models))
   router.route('/agent/sessions', createAgentSessionRouter(runtime, workspaces))
   router.route('/agent/sessions', createAgentRunRouter(runtime))
+  router.route(
+    '/agent/capabilities',
+    createAgentCapabilityRouter(runtime, workspaces),
+  )
   router.route('/workspaces', createWorkspaceRouter(workspaces))
   return router
 }

@@ -1,8 +1,12 @@
 import type { ToolPermission } from '@devaid/agent-policy'
+import type { AgentRunAttachment } from '@devaid/agent-runtime'
 
 export interface SendAgentMessageDto {
+  attachments?: readonly AgentRunAttachment[]
+  commandId?: string
   content: string
   permission: ToolPermission
+  skillIds?: readonly string[]
 }
 
 export type AgentRunEventDto =
@@ -29,6 +33,15 @@ export type AgentRunEventDto =
       title: string
       toolCallId: string
       toolName: 'edit' | 'read' | 'write'
+      type: 'tool_approval_required'
+    }
+  | {
+      approvalId: string
+      input: { args: string[]; program: string }
+      kind: 'command'
+      title: string
+      toolCallId: string
+      toolName: 'command'
       type: 'tool_approval_required'
     }
   | {

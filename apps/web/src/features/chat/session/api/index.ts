@@ -7,6 +7,7 @@ export {
   listAgentSessionMessages,
   listAgentSessions,
   parseAgentSseFrames,
+  reconnectAgentRun,
   streamAgentMessage,
   resolveToolApproval,
   updateAgentSessionModel,

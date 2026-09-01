@@ -5,6 +5,7 @@ import {
   toModelProvider,
 } from '../../models/data/provider-models.ts'
 import { INITIAL_PLUGIN_CONNECTORS } from '../../plugins/data/plugin-connectors.ts'
+import { getAgentCapabilities } from '../api/index.ts'
 import { ModelSettingsContext } from '../contexts/model-settings-context.ts'
 import {
   PermissionSettingsContext,
@@ -12,29 +13,33 @@ import {
 } from '../contexts/permission-settings-context.ts'
 import {
   PluginSettingsContext,
+  type AssistantSkill,
+  type CapabilityCommand,
+  type McpServer,
   type PluginSettingsTab,
 } from '../contexts/plugin-settings-context.ts'
-import {
-  INITIAL_ASSISTANT_SKILLS,
-  INITIAL_MCP_SERVERS,
-} from '../data/settings-data.ts'
 
 interface SettingsProviderProps {
   children: ReactNode
   onOpenPluginSettings: (tab: PluginSettingsTab) => void
+  selectedWorkspaceId: string
 }
 
-/** 持有当前页面会话的模型、权限、技能、MCP 与插件设置状态。 */
+/** 持有模型、权限、当前工作区能力与插件设置状态。 */
 export function SettingsProvider({
   children,
   onOpenPluginSettings,
+  selectedWorkspaceId,
 }: SettingsProviderProps) {
   const [providers, setProviders] = useState(createInitialModelProviders)
   const [isLoadingProviders, setIsLoadingProviders] = useState(true)
   const [providerError, setProviderError] = useState<string | null>(null)
   const [permission, setPermission] = useState<PermissionId>('workspace-write')
-  const [skills, setSkills] = useState(() => [...INITIAL_ASSISTANT_SKILLS])
-  const [mcpServers, setMcpServers] = useState(() => [...INITIAL_MCP_SERVERS])
+  const [skills, setSkills] = useState<AssistantSkill[]>([])
+  const [commands, setCommands] = useState<CapabilityCommand[]>([])
+  const [capabilityError, setCapabilityError] = useState<string | null>(null)
+  const [isLoadingCapabilities, setIsLoadingCapabilities] = useState(false)
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([])
   const [pluginConnectors, setPluginConnectors] = useState(() =>
     INITIAL_PLUGIN_CONNECTORS.map((connector) => ({
       ...connector,
@@ -67,6 +72,43 @@ export function SettingsProvider({
     queueMicrotask(() => void refreshProviders())
   }, [refreshProviders])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return
+      if (!selectedWorkspaceId) {
+        setSkills([])
+        setCommands([])
+        setCapabilityError(null)
+        setIsLoadingCapabilities(false)
+        return
+      }
+      setIsLoadingCapabilities(true)
+      void getAgentCapabilities(selectedWorkspaceId, controller.signal)
+        .then((catalog) => {
+          setSkills(catalog.skills)
+          setCommands(catalog.commands)
+          setCapabilityError(
+            catalog.diagnostics.length
+              ? `${catalog.diagnostics.length} 个能力文件未能加载。`
+              : null,
+          )
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return
+          setSkills([])
+          setCommands([])
+          setCapabilityError(
+            error instanceof Error ? error.message : '能力目录请求失败。',
+          )
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setIsLoadingCapabilities(false)
+        })
+    })
+    return () => controller.abort()
+  }, [selectedWorkspaceId])
+
   return (
     <PermissionSettingsContext.Provider value={{ permission, setPermission }}>
       <ModelSettingsContext.Provider
@@ -80,6 +122,9 @@ export function SettingsProvider({
       >
         <PluginSettingsContext.Provider
           value={{
+            capabilityError,
+            commands,
+            isLoadingCapabilities,
             mcpServers,
             openPluginSettings: onOpenPluginSettings,
             pluginConnectors,

@@ -8,6 +8,7 @@ export type { PermissionId } from './contexts/index.ts'
 export { PluginSettingsContext, usePluginSettings } from './contexts/index.ts'
 export type {
   AssistantSkill,
+  CapabilityCommand,
   McpConnectionStatus,
   McpServer,
   McpTransport,

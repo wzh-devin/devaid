@@ -2,6 +2,7 @@ import type {
   AgentRuntime,
   AgentSessionDetail,
   AgentSessionInfo,
+  AgentSessionMessagePage,
 } from '@devaid/agent-runtime'
 import type { Context } from 'hono'
 
@@ -122,6 +123,28 @@ async function workspaceMap(workspaces: WorkspaceStore) {
   )
 }
 
+function messagePageDto(
+  sessionId: string,
+  page: AgentSessionMessagePage,
+): AgentSessionMessagePageDto {
+  return {
+    ...page,
+    items: page.items.map((message) => ({
+      ...message,
+      attachments: message.attachments?.map(
+        ({ contentIndex, ...attachment }) => ({
+          ...attachment,
+          ...(attachment.mimeType.startsWith('image/')
+            ? {
+                src: `/api/agent/sessions/${encodeURIComponent(sessionId)}/attachments/${encodeURIComponent(message.entryId)}/${contentIndex}`,
+              }
+            : {}),
+        }),
+      ),
+    })),
+  }
+}
+
 /** 创建 Agent Session CRUD 与消息读取 Controller。 */
 export function createAgentSessionController(
   runtime: AgentRuntime,
@@ -194,12 +217,32 @@ export function createAgentSessionController(
         )
       }
       try {
+        const sessionId = context.req.param('id')!
         return context.json(
-          (await runtime.getMessages(
-            context.req.param('id')!,
-            query,
-          )) satisfies AgentSessionMessagePageDto,
+          messagePageDto(
+            sessionId,
+            await runtime.getMessages(sessionId, query),
+          ),
         )
+      } catch (error) {
+        return agentErrorResponse(context, error)
+      }
+    },
+    attachment: async (context: Context) => {
+      const contentIndex = Number(context.req.param('contentIndex'))
+      try {
+        const attachment = await runtime.getAttachment(
+          context.req.param('id')!,
+          context.req.param('entryId')!,
+          contentIndex,
+        )
+        const data = Buffer.from(attachment.data, 'base64')
+        return context.body(data, 200, {
+          'cache-control': 'private, no-store',
+          'content-length': String(data.byteLength),
+          'content-type': attachment.mimeType,
+          'x-content-type-options': 'nosniff',
+        })
       } catch (error) {
         return agentErrorResponse(context, error)
       }

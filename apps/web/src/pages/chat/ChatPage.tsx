@@ -9,10 +9,8 @@ import {
   ChatComposer,
   type ChatSubmitPayload,
   type ChatThread,
-  findWorkspaceByThreadId,
   type PendingToolApprovalVo,
   ThreadMessage,
-  useChatWorkspace,
 } from '../../features/chat/index.ts'
 import { AgentTraceView } from '../../features/trace/index.ts'
 
@@ -43,36 +41,30 @@ export function ChatPage({
   thread,
 }: ChatPageProps) {
   const [draft, setDraft] = useState('')
-  const [capabilityError, setCapabilityError] = useState('')
   const appLayout = useAppLayout()
-  const { selectedWorkspaceId, workspaces } = useChatWorkspace()
-  const [fixedWorkspaceId] = useState(
-    () =>
-      findWorkspaceByThreadId(workspaces, thread.id)?.id ?? selectedWorkspaceId,
-  )
   const initialModelKey = thread.providerId
     ? `${thread.providerId}:${thread.modelId}`
     : undefined
   const pendingTool = pendingApproval
     ? {
-        approval: { title: pendingApproval.title },
-        input: { path: pendingApproval.path },
+        approval: {
+          ...(pendingApproval.kind === 'command'
+            ? {
+                description: JSON.stringify(pendingApproval.input, null, 2),
+              }
+            : {}),
+          title: pendingApproval.title,
+        },
+        input:
+          pendingApproval.kind === 'command'
+            ? pendingApproval.input
+            : { path: pendingApproval.path },
         kind: pendingApproval.kind,
         state: 'requires-action' as const,
         toolCallId: pendingApproval.toolCallId,
         toolName: pendingApproval.toolName,
       }
     : undefined
-
-  const handleSubmit = (payload: ChatSubmitPayload) => {
-    if (payload.attachments.length || payload.contextItems.length) {
-      setCapabilityError('附件、Skills、MCP 和命令暂未接入 Agent Runtime。')
-      return false
-    }
-
-    setCapabilityError('')
-    return onSubmit(payload)
-  }
 
   return (
     <div className="flex h-[calc(100svh-var(--chat-navbar-height,64px))] flex-col overflow-hidden min-[769px]:h-svh">
@@ -155,8 +147,8 @@ export function ChatPage({
             />
           ) : (
             <ChatComposer
-              error={capabilityError || error}
-              fixedWorkspaceId={fixedWorkspaceId}
+              error={error}
+              fixedWorkspaceId={thread.workspaceId ?? undefined}
               initialModelId={thread.modelId}
               initialModelKey={initialModelKey}
               isDisabled={isLoading || !thread.modelId}
@@ -164,7 +156,7 @@ export function ChatPage({
               value={draft}
               onModelChange={onModelChange}
               onStop={onStop}
-              onSubmit={handleSubmit}
+              onSubmit={onSubmit}
               onValueChange={setDraft}
             />
           )}

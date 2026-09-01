@@ -9,13 +9,21 @@ import type { PluginConnector } from '../../plugins/data/plugin-connectors.ts'
 export type PluginSettingsTab = 'mcp' | 'plugins' | 'skills'
 export type McpTransport = 'http' | 'stdio'
 export type McpConnectionStatus = 'connected' | 'disconnected'
+export type SkillSource = 'user'
 
 export interface AssistantSkill {
   description: string
   enabled: boolean
   id: string
   name: string
-  source: string
+  source: SkillSource
+}
+
+export interface CapabilityCommand {
+  description: string
+  id: string
+  name: string
+  source: 'builtin' | 'project' | 'user'
 }
 
 export interface McpServer {
@@ -30,6 +38,9 @@ export interface McpServer {
 }
 
 interface PluginSettingsContextValue {
+  capabilityError: string | null
+  commands: CapabilityCommand[]
+  isLoadingCapabilities: boolean
   mcpServers: McpServer[]
   openPluginSettings: (tab: PluginSettingsTab) => void
   pluginConnectors: PluginConnector[]
@@ -42,7 +53,7 @@ interface PluginSettingsContextValue {
 export const PluginSettingsContext =
   createContext<PluginSettingsContextValue | null>(null)
 
-/** 读取当前页面会话中的 Skill、MCP 配置和插件设置入口。 */
+/** 读取当前工作区真实能力和插件设置入口。 */
 export const usePluginSettings = () => {
   const pluginSettings = useContext(PluginSettingsContext)
 

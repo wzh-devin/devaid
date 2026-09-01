@@ -82,7 +82,10 @@ export function ChatLayout({
   }, [])
 
   return (
-    <SettingsProvider onOpenPluginSettings={openPluginSettings}>
+    <SettingsProvider
+      selectedWorkspaceId={selectedWorkspaceId}
+      onOpenPluginSettings={openPluginSettings}
+    >
       <ChatWorkspaceContext.Provider
         value={{ onWorkspaceSelect, selectedWorkspaceId, workspaces }}
       >

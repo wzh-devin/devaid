@@ -5,9 +5,6 @@ import type {
 } from '@devaid/agent-policy'
 import { ToolPolicy, ToolPolicyError } from '@devaid/agent-policy'
 import {
-  createEditTool,
-  createReadTool,
-  createWriteTool,
   type AgentHarnessTool,
   type AgentTool,
   type BeforeToolCallContext,
@@ -15,10 +12,14 @@ import {
   type ExecutionToolContext,
 } from '@earendil-works/pi-agent-core'
 
-import { WorkspaceExecutionEnv } from './workspace-execution-env.ts'
+import { createCommandTool, parseCommandInput } from '../tools/command.ts'
+import { createEditTool } from '../tools/edit.ts'
+import { createReadTool } from '../tools/read.ts'
+import { createWriteTool } from '../tools/write.ts'
+import { WorkspaceExecutionEnv } from './execution-env.ts'
 
 export const WORKSPACE_TOOLS_SYSTEM_PROMPT =
-  'File tools are limited to workspace-relative paths. Shell and process execution are unavailable.'
+  'File tools are limited to workspace-relative paths. The command tool can run installed programs with structured arguments only after user approval.'
 
 interface WorkspaceToolsOptions {
   cwd: string
@@ -43,9 +44,11 @@ const bindTool = <TContext extends ExecutionToolContext>(
 const toolKind = (
   toolName: string,
 ):
+  | { effect: 'execute'; toolName: 'command' }
   | { effect: 'read'; toolName: 'read' }
   | { effect: 'write'; toolName: 'edit' | 'write' }
   | undefined => {
+  if (toolName === 'command') return { effect: 'execute', toolName }
   if (toolName === 'read') return { effect: 'read' as const, toolName }
   if (toolName === 'write' || toolName === 'edit') {
     return { effect: 'write' as const, toolName }
@@ -70,6 +73,7 @@ export const createWorkspaceTools = async (options: WorkspaceToolsOptions) => {
     bindTool(createReadTool(), context),
     bindTool(createWriteTool(), context),
     bindTool(createEditTool(), context),
+    await createCommandTool(env.cwd),
   ]
 
   const beforeToolCall = async (
@@ -77,11 +81,34 @@ export const createWorkspaceTools = async (options: WorkspaceToolsOptions) => {
     signal?: AbortSignal,
   ): Promise<BeforeToolCallResult | undefined> => {
     const kind = toolKind(call.toolCall.name)
-    const path = inputPath(call.args)
-    if (!kind || path === undefined) {
+    if (!kind) {
       return { block: true, reason: '工具或参数不在允许范围内。' }
     }
     try {
+      if (kind.effect === 'execute') {
+        const command = parseCommandInput(call.args)
+        await options.policy.authorize(
+          {
+            command,
+            effect: 'execute',
+            permission: options.permission,
+            runId: options.runId,
+            sessionId: options.sessionId,
+            toolCallId: call.toolCall.id,
+            toolName: 'command',
+          },
+          {
+            onRequested: options.onApprovalRequested,
+            onResolved: options.onApprovalResolved,
+          },
+          signal,
+        )
+        return undefined
+      }
+      const path = inputPath(call.args)
+      if (path === undefined) {
+        return { block: true, reason: '工具或参数不在允许范围内。' }
+      }
       const relativePath = await env.describePath(path, kind.effect)
       await options.policy.authorize(
         {
@@ -106,7 +133,11 @@ export const createWorkspaceTools = async (options: WorkspaceToolsOptions) => {
         reason:
           error instanceof ToolPolicyError
             ? error.message
-            : '文件路径不在当前工作区允许范围内。',
+            : kind.effect === 'execute'
+              ? error instanceof Error
+                ? error.message
+                : '命令参数不在允许范围内。'
+              : '文件路径不在当前工作区允许范围内。',
       }
     }
   }

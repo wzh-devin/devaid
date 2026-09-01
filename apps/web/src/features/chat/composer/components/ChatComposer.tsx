@@ -102,7 +102,7 @@ export function ChatComposer({
   const [isModelUpdating, setIsModelUpdating] = useState(false)
   const { providers } = useModelSettings()
   const { permission } = usePermissionSettings()
-  const { mcpServers, openPluginSettings, skills } = usePluginSettings()
+  const { commands, openPluginSettings, skills } = usePluginSettings()
   const { onWorkspaceSelect, selectedWorkspaceId, workspaces } =
     useChatWorkspace()
   const composerWorkspace = resolveComposerWorkspace(
@@ -132,7 +132,7 @@ export function ChatComposer({
     ? getComposerCapabilityGroups(
         menuState.mode,
         skills,
-        mcpServers,
+        commands,
         menuState.query,
       )
     : []
@@ -145,7 +145,7 @@ export function ChatComposer({
     unavailableReason: getComposerContextUnavailableReason(
       item,
       skills,
-      mcpServers,
+      commands,
     ),
   }))
   const hasUnavailableContext = contextDisplayItems.some(
@@ -155,7 +155,7 @@ export function ChatComposer({
   const transientContextItems = contextDisplayItems.filter(
     (item) => !isComposerModeContext(item),
   )
-  const ActiveModeIcon = activeMode?.id === 'command-plan' ? Bulb : Terminal
+  const ActiveModeIcon = activeMode?.reference === '/plan' ? Bulb : Terminal
 
   useEffect(() => {
     attachmentsRef.current = attachments
@@ -213,9 +213,7 @@ export function ChatComposer({
 
     attachments.forEach(revokeAttachmentUrl)
     setAttachments([])
-    setContextItems((currentItems) =>
-      currentItems.filter(isComposerModeContext),
-    )
+    setContextItems([])
     onValueChange('')
   }
 

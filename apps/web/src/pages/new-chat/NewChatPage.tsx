@@ -24,15 +24,8 @@ export function NewChatPage({
   status,
 }: NewChatPageProps) {
   const [fixedWorkspaceId, setFixedWorkspaceId] = useState<string>()
-  const [capabilityError, setCapabilityError] = useState('')
 
   const handleSubmit = async (payload: ChatSubmitPayload) => {
-    if (payload.attachments.length || payload.contextItems.length) {
-      setCapabilityError('附件、Skills、MCP 和命令暂未接入 Agent Runtime。')
-      return false
-    }
-
-    setCapabilityError('')
     const accepted = await onSubmit(payload)
     if (accepted) {
       setFixedWorkspaceId((workspaceId) => workspaceId ?? payload.workspaceId)
@@ -68,7 +61,7 @@ export function NewChatPage({
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
           <ChatComposer
-            error={capabilityError || error}
+            error={error}
             fixedWorkspaceId={fixedWorkspaceId}
             status={status}
             value={draft}

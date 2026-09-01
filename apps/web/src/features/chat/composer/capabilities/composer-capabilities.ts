@@ -1,6 +1,6 @@
 import type {
   AssistantSkill,
-  McpServer,
+  CapabilityCommand,
   PluginSettingsTab,
 } from '../../../settings/index.ts'
 
@@ -16,7 +16,7 @@ export interface ComposerContextItem {
   sourceId?: string
 }
 
-/** 命令会影响 Agent 的交互方式，作为可跨发送保留的模式。 */
+/** 命令会影响本轮 Agent 的交互方式，并在发送成功后清除。 */
 export const isComposerModeContext = (item: ComposerContextItem) =>
   item.kind === 'command'
 
@@ -43,53 +43,12 @@ export interface ComposerCapabilityGroup {
   label: string
 }
 
-const COMMANDS: readonly ComposerCapability[] = [
-  {
-    description: '先整理任务步骤，再开始执行。',
-    id: 'command-plan',
-    contextReference: '/plan',
-    kind: 'command',
-    label: '计划模式',
-  },
-  {
-    description: '检查当前工作区改动与潜在风险。',
-    id: 'command-review',
-    contextReference: '/review',
-    kind: 'command',
-    label: '代码审查',
-  },
-]
-
 const ADD_ITEMS: readonly ComposerCapability[] = [
   {
     description: '从设备中选择一个或多个文件。',
     id: 'attachment-files',
     kind: 'attachment',
-    label: '文件和文件夹',
-  },
-]
-
-const PLUGINS: readonly ComposerCapability[] = [
-  {
-    description: '探索、评审并实现产品界面。',
-    id: 'plugin-product-design',
-    contextReference: '@Product Design',
-    kind: 'plugin',
-    label: 'Product Design',
-  },
-  {
-    description: '查询 Codex 与 OpenAI 产品文档。',
-    id: 'plugin-openai-docs',
-    contextReference: '@OpenAI Docs',
-    kind: 'plugin',
-    label: 'OpenAI Docs',
-  },
-  {
-    description: '打开设置，管理已添加的技能。',
-    id: 'settings-skills',
-    kind: 'plugin',
-    label: '管理插件',
-    settingsTab: 'plugins',
+    label: '文件',
   },
 ]
 
@@ -136,15 +95,22 @@ export function findComposerTrigger(
 export function getComposerCapabilityGroups(
   mode: ComposerMenuMode,
   skills: readonly AssistantSkill[],
-  mcpServers: readonly McpServer[],
+  commands: readonly CapabilityCommand[],
   query = '',
 ): ComposerCapabilityGroup[] {
+  const commandItems: ComposerCapability[] = commands.map((command) => ({
+    description: command.description,
+    id: command.id,
+    contextReference: `/${command.name}`,
+    kind: 'command',
+    label: command.name,
+    sourceId: command.id,
+  }))
   if (mode !== 'slash') {
     return filterGroups(
       [
-        { id: 'commands', items: [...COMMANDS], label: '命令' },
+        { id: 'commands', items: commandItems, label: '命令' },
         { id: 'add', items: [...ADD_ITEMS], label: '添加' },
-        { id: 'plugins', items: [...PLUGINS], label: '插件' },
       ],
       query,
     )
@@ -155,36 +121,15 @@ export function getComposerCapabilityGroups(
     .map((skill) => ({
       description: skill.description,
       id: `skill-${skill.id}`,
-      contextReference: `/${skill.id}`,
+      contextReference: `/${skill.name}`,
       kind: 'skill',
       label: skill.name,
       sourceId: skill.id,
     }))
-  const mcpItems: ComposerCapability[] = mcpServers
-    .filter((server) => server.enabled && server.status === 'connected')
-    .map((server) => ({
-      description: server.description,
-      id: `mcp-${server.id}`,
-      contextReference: `/mcp:${server.id}`,
-      kind: 'mcp',
-      label: server.name,
-      sourceId: server.id,
-    }))
-
-  mcpItems.push({
-    description: '打开设置，添加或管理 MCP 服务器。',
-    id: 'settings-mcp',
-    kind: 'mcp',
-    label: '管理 MCP',
-    settingsTab: 'mcp',
-  })
-
   return filterGroups(
     [
-      { id: 'commands', items: [...COMMANDS], label: '命令' },
+      { id: 'commands', items: commandItems, label: '命令' },
       { id: 'skills', items: skillItems, label: 'Skills' },
-      { id: 'mcp', items: mcpItems, label: 'MCP' },
-      { id: 'plugins', items: [...PLUGINS], label: '插件' },
     ],
     query,
   )
@@ -238,7 +183,7 @@ export function addComposerContextItem(
 export function getComposerContextUnavailableReason(
   item: ComposerContextItem,
   skills: readonly AssistantSkill[],
-  mcpServers: readonly McpServer[],
+  commands: readonly CapabilityCommand[],
 ) {
   if (item.kind === 'skill') {
     const skill = skills.find((candidate) => candidate.id === item.sourceId)
@@ -246,13 +191,11 @@ export function getComposerContextUnavailableReason(
     if (!skill.enabled) return '技能已禁用'
   }
 
-  if (item.kind === 'mcp') {
-    const server = mcpServers.find(
-      (candidate) => candidate.id === item.sourceId,
-    )
-    if (!server) return 'MCP 已移除'
-    if (server.status !== 'connected') return 'MCP 未连接'
-    if (!server.enabled) return 'MCP 已禁用'
+  if (
+    item.kind === 'command' &&
+    !commands.some((command) => command.id === item.sourceId)
+  ) {
+    return '命令已移除'
   }
 
   return null

@@ -17,6 +17,11 @@ import type {
 } from '@earendil-works/pi-ai'
 
 import { AgentRuntimeError } from '../error/agent-runtime-error.ts'
+import { structuredMessageDetails } from '../execution/attachment-message.ts'
+import type {
+  AgentMessageAttachment,
+  AgentMessageContextItem,
+} from '../execution/run-input.ts'
 
 export interface AgentSessionModelConfig {
   modelId: string
@@ -66,7 +71,9 @@ export interface AgentSessionDetail extends AgentSessionInfo {
 }
 
 export interface AgentSessionMessage {
+  attachments?: AgentMessageAttachment[]
   content: string
+  contextItems?: AgentMessageContextItem[]
   entryId: string
   parts?: AgentSessionMessagePart[]
   reasoning?: string
@@ -80,7 +87,7 @@ export interface AgentSessionMessage {
 export interface AgentSessionTool {
   errorText?: string
   input: Record<string, unknown>
-  kind: 'edit' | 'read'
+  kind: 'command' | 'edit' | 'read' | 'skill'
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string
@@ -181,6 +188,26 @@ function toolResultText(message: ToolResultMessage) {
 }
 
 function safeToolInput(input: Record<string, unknown>) {
+  const attachmentId =
+    typeof input.attachmentId === 'string' ? input.attachmentId : undefined
+  if (attachmentId !== undefined) {
+    return attachmentId && !attachmentId.includes('\0')
+      ? { attachmentId }
+      : { attachmentId: '[blocked id]' }
+  }
+  if (
+    typeof input.program === 'string' &&
+    input.program.length > 0 &&
+    input.program.length <= 255 &&
+    !input.program.includes('\0') &&
+    Array.isArray(input.args) &&
+    input.args.length <= 128 &&
+    input.args.every(
+      (argument) => typeof argument === 'string' && !argument.includes('\0'),
+    )
+  ) {
+    return { args: [...input.args], program: input.program }
+  }
   const path = typeof input.path === 'string' ? input.path : undefined
   if (
     path === undefined ||
@@ -205,7 +232,16 @@ function toSessionTool(
   return {
     ...(result?.isError && output ? { errorText: output } : {}),
     input: safeToolInput(toolCall.arguments),
-    kind: toolCall.name === 'read' ? 'read' : 'edit',
+    kind:
+      toolCall.name === 'command'
+        ? 'command'
+        : toolCall.name === 'read'
+          ? 'read'
+          : toolCall.name === 'load_skill_resource'
+            ? 'skill'
+            : toolCall.name === 'view_attachment'
+              ? 'read'
+              : 'edit',
     ...(!result?.isError && output ? { output } : {}),
     state: result
       ? result.isError
@@ -222,6 +258,21 @@ function toMessage(
   toolResults: ReadonlyMap<string, ToolResultMessage>,
 ) {
   const { message } = entry
+  if (message.role === 'custom' && message.customType === 'devaid_user_input') {
+    const details = structuredMessageDetails(message.details)
+    if (!details) return undefined
+    return {
+      attachments: details.attachments.map(
+        ({ content: _content, kind: _kind, ...attachment }) => attachment,
+      ),
+      content: details.content,
+      contextItems: details.contextItems,
+      entryId: entry.id,
+      role: 'user' as const,
+      seq: entry.seq,
+      timestamp: message.timestamp,
+    } satisfies AgentSessionMessage
+  }
   if (message.role !== 'user' && message.role !== 'assistant') return undefined
   const parts: AgentSessionMessagePart[] =
     message.role === 'assistant'
@@ -479,6 +530,56 @@ export class AgentSessionService {
           candidates.length > options.limit
             ? (selected.at(-1)?.seq ?? null)
             : null,
+      }
+    } catch (error) {
+      return sessionFailure(error)
+    }
+  }
+
+  async attachment(id: string, entryId: string, contentIndex: number) {
+    if (!Number.isSafeInteger(contentIndex) || contentIndex < 0) {
+      throw new AgentRuntimeError(
+        'INVALID_SESSION_REQUEST',
+        '附件参数无效。',
+        400,
+      )
+    }
+    const opened = await this.openSession(id)
+    try {
+      const entry = (
+        await opened.session.findEntriesOnBranch({ order: 'oldestFirst' })
+      ).find((candidate) => candidate.id === entryId)
+      if (
+        entry?.type !== 'message' ||
+        entry.message.role !== 'custom' ||
+        entry.message.customType !== 'devaid_user_input' ||
+        !Array.isArray(entry.message.content)
+      ) {
+        throw new AgentRuntimeError('ATTACHMENT_NOT_FOUND', '附件不存在。', 404)
+      }
+      const details = structuredMessageDetails(entry.message.details)
+      const attachment = details?.attachments.find(
+        (candidate) => candidate.contentIndex === contentIndex,
+      )
+      const legacyContent = entry.message.content[contentIndex]
+      const image =
+        details?.schemaVersion === 2 &&
+        attachment?.kind === 'image' &&
+        attachment.content !== undefined
+          ? {
+              data: attachment.content,
+              mimeType: attachment.mimeType,
+            }
+          : legacyContent?.type === 'image'
+            ? legacyContent
+            : undefined
+      if (!attachment || !image) {
+        throw new AgentRuntimeError('ATTACHMENT_NOT_FOUND', '附件不存在。', 404)
+      }
+      return {
+        data: image.data,
+        mimeType: image.mimeType,
+        name: attachment.name,
       }
     } catch (error) {
       return sessionFailure(error)

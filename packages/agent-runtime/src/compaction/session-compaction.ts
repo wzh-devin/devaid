@@ -14,6 +14,10 @@ import {
 import type { Api, Model, Models } from '@earendil-works/pi-ai'
 
 import { AgentRuntimeError } from '../error/agent-runtime-error.ts'
+import {
+  modelSafeAttachmentEntries,
+  modelSafeAttachmentMessage,
+} from '../execution/attachment-message.ts'
 import type { AgentSessionMetadata } from '../session/session-service.ts'
 
 function contextNeedsCompaction(
@@ -21,8 +25,10 @@ function contextNeedsCompaction(
   incoming: AgentMessage | undefined,
   contextWindow: number,
 ) {
-  const messages = buildSessionContext(entries).messages
-  if (incoming) messages.push(incoming)
+  const messages = buildSessionContext(
+    modelSafeAttachmentEntries(entries),
+  ).messages
+  if (incoming) messages.push(modelSafeAttachmentMessage(incoming))
   return shouldCompact(
     estimateContextTokens(messages).tokens,
     contextWindow,
@@ -50,7 +56,7 @@ export async function compactSessionIfNeeded(options: {
   }
 
   const preparation = prepareCompaction(
-    options.entries,
+    modelSafeAttachmentEntries(options.entries),
     DEFAULT_COMPACTION_SETTINGS,
   )
   if (!preparation.ok || !preparation.value) {

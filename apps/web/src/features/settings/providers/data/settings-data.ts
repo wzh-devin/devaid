@@ -9,14 +9,14 @@ export const INITIAL_ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     enabled: true,
     id: 'code-review',
     name: '代码审查',
-    source: '内置',
+    source: 'user',
   },
   {
     description: '把复杂任务整理为可执行计划。',
     enabled: true,
     id: 'planning',
     name: '计划模式',
-    source: '项目',
+    source: 'user',
   },
 ] as const
 

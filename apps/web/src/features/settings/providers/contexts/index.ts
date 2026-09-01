@@ -14,6 +14,7 @@ export {
 } from './plugin-settings-context.ts'
 export type {
   AssistantSkill,
+  CapabilityCommand,
   McpConnectionStatus,
   McpServer,
   McpTransport,

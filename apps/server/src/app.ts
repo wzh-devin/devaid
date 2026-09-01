@@ -41,6 +41,7 @@ export async function createApp(
   const workspaces = new WorkspaceStore(dataDirectory)
   await workspaces.list()
   const runtime = new AgentRuntime(models, repository, sessionIndex, {
+    dataDirectory,
     policy: new ToolPolicy(),
     protectedRoots: [dataDirectory],
   })

@@ -561,11 +561,8 @@ export function ModelsSettingsSection() {
   return (
     <section className="mx-auto max-w-2xl">
       <h2 className="text-base leading-6 font-medium text-foreground">模型</h2>
-      <p className="mt-3 text-sm leading-[22px] text-muted">
-        填入各提供方的 API 密钥即可使用其模型。
-      </p>
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="text-sm text-muted">正在读取提供方…</p>
         ) : null}

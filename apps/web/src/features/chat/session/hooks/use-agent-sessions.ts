@@ -4,6 +4,7 @@ import type { ChatSubmitPayload } from '../../composer/index.ts'
 import type {
   ChatMessage,
   ChatMessageActivityPart,
+  ChatMessageTool,
   ChatThread,
 } from '../../data/index.ts'
 import type { ApprovalDecision } from '../../message/index.ts'
@@ -14,12 +15,15 @@ import {
   getPendingToolApproval,
   listAgentSessionMessages,
   listAgentSessions,
+  reconnectAgentRun,
   resolveToolApproval,
   streamAgentMessage,
   updateAgentSessionModel,
 } from '../api/index.ts'
 import { toChatMessages, toChatThread } from '../data/index.ts'
 import type { PendingToolApprovalVo } from '../types/index.ts'
+
+type PendingApprovalMap = Record<string, PendingToolApprovalVo | undefined>
 
 const messageTitle = (message: string) =>
   message.trim().replace(/\s+/gu, ' ').slice(0, 60)
@@ -39,6 +43,15 @@ const toolOutputText = (output: unknown) => {
     .join('\n')
 }
 
+const toolKind = (toolName: string): ChatMessageTool['kind'] =>
+  toolName === 'command'
+    ? 'command'
+    : toolName === 'read' || toolName === 'view_attachment'
+      ? 'read'
+      : toolName === 'load_skill_resource'
+        ? 'skill'
+        : 'edit'
+
 const streamingAssistant = (id: string): ChatMessage => ({
   actions: 'full',
   id,
@@ -46,6 +59,16 @@ const streamingAssistant = (id: string): ChatMessage => ({
   status: 'streaming',
   text: '',
 })
+
+/** 只清除本次已决议的审批，避免覆盖抢先到达的下一条 SSE 审批。 */
+export const clearResolvedApproval = (
+  approvals: PendingApprovalMap,
+  sessionId: string,
+  approvalId: string,
+) =>
+  approvals[sessionId]?.approvalId === approvalId
+    ? { ...approvals, [sessionId]: undefined }
+    : approvals
 
 /** 读取流式消息的当前活动块，并兼容尚未携带 parts 的消息。 */
 const messageActivityParts = (
@@ -202,9 +225,9 @@ export function useAgentSessions() {
   const [globalError, setGlobalError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [loadingIds, setLoadingIds] = useState<ReadonlySet<string>>(new Set())
-  const [pendingApprovals, setPendingApprovals] = useState<
-    Record<string, PendingToolApprovalVo | undefined>
-  >({})
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApprovalMap>(
+    {},
+  )
   const statusRef = useRef<Record<string, ChatStatus>>({})
   const loadingRef = useRef(new Map<string, Promise<void>>())
 
@@ -282,15 +305,35 @@ export function useAgentSessions() {
       if (current) return current
 
       setLoadingIds((ids) => new Set(ids).add(sessionId))
+      setErrors((errors) => ({ ...errors, [sessionId]: '' }))
       const task = Promise.all([
         getAgentSession(sessionId),
         listAgentSessionMessages(sessionId),
         getPendingToolApproval(sessionId),
+        reconnectAgentRun(sessionId, (event) => {
+          if (event.type === 'tool_approval_required') {
+            setPendingApprovals((current) => ({
+              ...current,
+              [sessionId]: event,
+            }))
+          } else if (event.type === 'tool_end') {
+            setPendingApprovals((current) =>
+              current[sessionId]?.toolCallId === event.toolCallId
+                ? { ...current, [sessionId]: undefined }
+                : current,
+            )
+          } else if (event.type === 'error') {
+            setErrors((current) => ({
+              ...current,
+              [sessionId]: event.message,
+            }))
+          }
+        }),
       ])
-        .then(([session, firstPage, pendingApproval]) => {
+        .then(async ([session, firstPage, pendingApproval, reconnectedRun]) => {
           setPendingApprovals((current) => ({
             ...current,
-            [sessionId]: pendingApproval,
+            [sessionId]: current[sessionId] ?? pendingApproval,
           }))
           const next = toChatThread(session)
           const firstMessages = firstPage.items
@@ -311,13 +354,28 @@ export function useAgentSessions() {
               firstMessages.sort((left, right) => left.seq - right.seq),
             )
             updateThread(sessionId, (thread) => ({ ...thread, messages }))
-            return
+          } else {
+            await loadMessages(sessionId)
           }
-          return loadMessages(sessionId)
-        })
-        .then(() => {
-          setStatus(sessionId, 'ready')
-          setErrors((current) => ({ ...current, [sessionId]: '' }))
+          setStatus(sessionId, reconnectedRun ? 'streaming' : 'ready')
+          if (reconnectedRun) {
+            void reconnectedRun.completed
+              .then(async () => {
+                await loadMessages(sessionId)
+                const nextApproval = await getPendingToolApproval(sessionId)
+                setPendingApprovals((current) => ({
+                  ...current,
+                  [sessionId]: nextApproval,
+                }))
+              })
+              .catch((error) => {
+                setErrors((current) => ({
+                  ...current,
+                  [sessionId]: errorMessage(error),
+                }))
+              })
+              .finally(() => setStatus(sessionId, 'ready'))
+          }
         })
         .catch((error) => {
           setErrors((current) => ({
@@ -343,9 +401,10 @@ export function useAgentSessions() {
     setIsCreating(true)
     setGlobalError('')
     try {
+      const title = messageTitle(payload.message)
       const session = await createAgentSession({
         modelId: payload.modelId,
-        name: messageTitle(payload.message),
+        ...(title ? { name: title } : {}),
         providerId: payload.providerId,
         workspaceId: payload.workspaceId,
       })
@@ -389,170 +448,212 @@ export function useAgentSessions() {
   )
 
   const sendMessage = useCallback(
-    async (
-      sessionId: string,
-      message: string,
-      permission: ChatSubmitPayload['permission'],
-    ) => {
+    async (sessionId: string, payload: ChatSubmitPayload) => {
       const startedAt = Date.now()
       const userId = `pending-user-${crypto.randomUUID()}`
       const assistantId = `pending-assistant-${crypto.randomUUID()}`
+      const previewUrls: string[] = []
+      const attachments = payload.attachments.map((file) => {
+        const src = file.type.startsWith('image/')
+          ? URL.createObjectURL(file)
+          : undefined
+        if (src) previewUrls.push(src)
+        return { mimeType: file.type, name: file.name, src }
+      })
+      const contextItems = payload.contextItems.filter(
+        (item) => item.kind === 'command' || item.kind === 'skill',
+      )
+      const preview =
+        payload.message || attachments[0]?.name || contextItems[0]?.label || ''
       setErrors((current) => ({ ...current, [sessionId]: '' }))
       setStatus(sessionId, 'submitted')
       updateThread(sessionId, (thread) => ({
         ...thread,
         messages: [
           ...thread.messages,
-          { id: userId, role: 'user', text: message },
+          {
+            attachments,
+            contextItems,
+            id: userId,
+            role: 'user',
+            text: payload.message,
+          },
           streamingAssistant(assistantId),
         ],
-        preview: message,
+        preview,
         updatedAt: '刚刚',
       }))
 
       let terminal = false
       let runError = ''
       try {
-        await streamAgentMessage(sessionId, message, permission, (event) => {
-          switch (event.type) {
-            case 'start':
-              setStatus(sessionId, 'streaming')
-              break
-            case 'text_delta':
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId
-                    ? appendStreamingText(item, event.delta)
-                    : item,
-                ),
-              }))
-              break
-            case 'reasoning_delta':
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId
-                    ? appendStreamingReasoning(item, event.delta)
-                    : item,
-                ),
-              }))
-              break
-            case 'tool_start':
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId
-                    ? updateStreamingTool(
-                        item,
-                        {
-                          input: event.input,
-                          kind: event.toolName === 'read' ? 'read' : 'edit',
-                          state: 'input-available',
-                          toolCallId: event.toolCallId,
-                          toolName: event.toolName,
-                        },
-                        startedAt,
-                      )
-                    : item,
-                ),
-              }))
-              break
-            case 'tool_end':
-              setPendingApprovals((current) =>
-                current[sessionId]?.toolCallId === event.toolCallId
-                  ? { ...current, [sessionId]: undefined }
-                  : current,
-              )
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId
-                    ? updateStreamingTool(
-                        item,
-                        {
-                          ...(event.isError
-                            ? { errorText: toolOutputText(event.output) }
-                            : { output: event.output }),
-                          input:
-                            (item.activity?.tools ?? item.tools)?.find(
-                              (tool) => tool.toolCallId === event.toolCallId,
-                            )?.input ?? {},
-                          kind: event.toolName === 'read' ? 'read' : 'edit',
-                          state: event.isError
-                            ? 'output-error'
-                            : 'output-available',
-                          toolCallId: event.toolCallId,
-                          toolName: event.toolName,
-                        },
-                        startedAt,
-                      )
-                    : item,
-                ),
-              }))
-              break
-            case 'tool_approval_required':
-              setPendingApprovals((current) => ({
-                ...current,
-                [sessionId]: event,
-              }))
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId
-                    ? updateStreamingTool(
-                        item,
-                        {
-                          approval: { title: event.title },
-                          input: { path: event.path },
-                          kind: event.kind,
-                          state: 'requires-action',
-                          toolCallId: event.toolCallId,
-                          toolName: event.toolName,
-                        },
-                        startedAt,
-                      )
-                    : item,
-                ),
-              }))
-              break
-            case 'done':
-              terminal = true
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId && item.activity
-                    ? {
-                        ...item,
-                        activity: { ...item.activity, endedAt: Date.now() },
-                      }
-                    : item,
-                ),
-              }))
-              break
-            case 'error':
-              terminal = true
-              runError = event.message
-              updateThread(sessionId, (thread) => ({
-                ...thread,
-                messages: thread.messages.map((item) =>
-                  item.id === assistantId && item.activity
-                    ? {
-                        ...item,
-                        activity: {
-                          ...item.activity,
-                          endedAt: Date.now(),
-                          hasError: true,
-                        },
-                      }
-                    : item,
-                ),
-              }))
-              break
-            case 'usage':
-              break
-          }
-        })
+        await streamAgentMessage(
+          sessionId,
+          {
+            attachments: payload.attachments,
+            commandId: contextItems.find((item) => item.kind === 'command')
+              ?.sourceId,
+            content: payload.message,
+            permission: payload.permission,
+            skillIds: contextItems.flatMap((item) =>
+              item.kind === 'skill' && item.sourceId ? [item.sourceId] : [],
+            ),
+          },
+          (event) => {
+            switch (event.type) {
+              case 'start':
+                setStatus(sessionId, 'streaming')
+                break
+              case 'text_delta':
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? appendStreamingText(item, event.delta)
+                      : item,
+                  ),
+                }))
+                break
+              case 'reasoning_delta':
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? appendStreamingReasoning(item, event.delta)
+                      : item,
+                  ),
+                }))
+                break
+              case 'tool_start':
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? updateStreamingTool(
+                          item,
+                          {
+                            input: event.input,
+                            kind: toolKind(event.toolName),
+                            state: 'input-available',
+                            toolCallId: event.toolCallId,
+                            toolName: event.toolName,
+                          },
+                          startedAt,
+                        )
+                      : item,
+                  ),
+                }))
+                break
+              case 'tool_end':
+                setPendingApprovals((current) =>
+                  current[sessionId]?.toolCallId === event.toolCallId
+                    ? { ...current, [sessionId]: undefined }
+                    : current,
+                )
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? updateStreamingTool(
+                          item,
+                          {
+                            ...(event.isError
+                              ? { errorText: toolOutputText(event.output) }
+                              : { output: event.output }),
+                            input:
+                              (item.activity?.tools ?? item.tools)?.find(
+                                (tool) => tool.toolCallId === event.toolCallId,
+                              )?.input ?? {},
+                            kind: toolKind(event.toolName),
+                            state: event.isError
+                              ? 'output-error'
+                              : 'output-available',
+                            toolCallId: event.toolCallId,
+                            toolName: event.toolName,
+                          },
+                          startedAt,
+                        )
+                      : item,
+                  ),
+                }))
+                break
+              case 'tool_approval_required':
+                setPendingApprovals((current) => ({
+                  ...current,
+                  [sessionId]: event,
+                }))
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId
+                      ? updateStreamingTool(
+                          item,
+                          {
+                            approval: {
+                              ...(event.kind === 'command'
+                                ? {
+                                    description: JSON.stringify(
+                                      event.input,
+                                      null,
+                                      2,
+                                    ),
+                                  }
+                                : {}),
+                              title: event.title,
+                            },
+                            input:
+                              event.kind === 'command'
+                                ? event.input
+                                : { path: event.path },
+                            kind: event.kind,
+                            state: 'requires-action',
+                            toolCallId: event.toolCallId,
+                            toolName: event.toolName,
+                          },
+                          startedAt,
+                        )
+                      : item,
+                  ),
+                }))
+                break
+              case 'done':
+                terminal = true
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId && item.activity
+                      ? {
+                          ...item,
+                          activity: { ...item.activity, endedAt: Date.now() },
+                        }
+                      : item,
+                  ),
+                }))
+                break
+              case 'error':
+                terminal = true
+                runError = event.message
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  messages: thread.messages.map((item) =>
+                    item.id === assistantId && item.activity
+                      ? {
+                          ...item,
+                          activity: {
+                            ...item.activity,
+                            endedAt: Date.now(),
+                            hasError: true,
+                          },
+                        }
+                      : item,
+                  ),
+                }))
+                break
+              case 'usage':
+                break
+            }
+          },
+        )
         if (!terminal) runError = '连接已中断，已重新加载持久化消息。'
       } catch (error) {
         runError = errorMessage(error)
@@ -568,6 +669,7 @@ export function useAgentSessions() {
       } catch (error) {
         runError ||= errorMessage(error)
       } finally {
+        previewUrls.forEach((url) => URL.revokeObjectURL(url))
         setStatus(sessionId, 'ready')
       }
       if (runError) {
@@ -604,10 +706,9 @@ export function useAgentSessions() {
       if (!approval) return
       try {
         await resolveToolApproval(sessionId, approval.approvalId, decision)
-        setPendingApprovals((current) => ({
-          ...current,
-          [sessionId]: undefined,
-        }))
+        setPendingApprovals((current) =>
+          clearResolvedApproval(current, sessionId, approval.approvalId),
+        )
       } catch (error) {
         setErrors((current) => ({
           ...current,

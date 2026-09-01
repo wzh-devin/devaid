@@ -4,23 +4,35 @@ export const TOOL_PERMISSIONS = ['read-only', 'workspace-write'] as const
 
 export type ToolPermission = (typeof TOOL_PERMISSIONS)[number]
 export type ApprovalDecision = 'approve-once' | 'reject'
-export type ToolEffect = 'read' | 'write'
+export type ToolEffect = 'execute' | 'read' | 'write'
 
-export interface ToolAuthorizationRequest {
-  effect: ToolEffect
-  path: string
+interface ToolAuthorizationBase {
   permission: ToolPermission
   runId: string
   sessionId: string
   toolCallId: string
+}
+
+export interface FileToolAuthorizationRequest extends ToolAuthorizationBase {
+  effect: 'read' | 'write'
+  path: string
   toolName: 'edit' | 'read' | 'write'
 }
 
-export interface PendingToolApproval extends ToolAuthorizationRequest {
+export interface CommandToolAuthorizationRequest extends ToolAuthorizationBase {
+  command: { args: string[]; program: string }
+  effect: 'execute'
+  toolName: 'command'
+}
+
+export type ToolAuthorizationRequest =
+  CommandToolAuthorizationRequest | FileToolAuthorizationRequest
+
+export type PendingToolApproval = ToolAuthorizationRequest & {
   approvalId: string
 }
 
-export interface ApprovalResolution extends PendingToolApproval {
+export type ApprovalResolution = PendingToolApproval & {
   decision: ApprovalDecision
   reason: 'aborted' | 'server-closed' | 'user'
 }
@@ -58,10 +70,13 @@ export class ToolPolicyError extends Error {
 export const isToolPermission = (value: unknown): value is ToolPermission =>
   TOOL_PERMISSIONS.some((permission) => permission === value)
 
-/** 对固定文件工具矩阵做无副作用决策。 */
+/** 对固定工具矩阵做无副作用决策。 */
 export const evaluateToolPolicy = (
   request: ToolAuthorizationRequest,
 ): 'allow' | 'deny' | 'require-approval' => {
+  if (request.toolName === 'command' && request.effect === 'execute') {
+    return 'require-approval'
+  }
   if (request.toolName === 'read' && request.effect === 'read') return 'allow'
   if (
     (request.toolName === 'write' || request.toolName === 'edit') &&
@@ -92,7 +107,7 @@ export class ToolPolicy {
     if (decision === 'deny') {
       throw new ToolPolicyError(
         'TOOL_PERMISSION_DENIED',
-        '当前工具调用不在允许的文件能力范围内。',
+        '当前工具调用不在允许的能力范围内。',
       )
     }
     if (signal?.aborted) {
