@@ -7,6 +7,10 @@ export type { ApprovalDecision } from './types/index.ts'
 export {
   getToolActivitySummary,
   getToolArgsText,
+  getToolFilePresentation,
   getToolStatus,
 } from './utils/index.ts'
-export type { ToolActivitySummary } from './utils/index.ts'
+export type {
+  ToolActivitySummary,
+  ToolFilePresentation,
+} from './utils/index.ts'

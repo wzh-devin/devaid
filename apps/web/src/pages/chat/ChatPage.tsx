@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { AppLayout, useAppLayout } from '@agile-avocation/ui-pro/app-layout'
 import { ChatConversation } from '@agile-avocation/ui-pro/chat-conversation'
 import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import { Tabs } from '@heroui/react'
@@ -41,7 +40,6 @@ export function ChatPage({
   thread,
 }: ChatPageProps) {
   const [draft, setDraft] = useState('')
-  const appLayout = useAppLayout()
   const initialModelKey = thread.providerId
     ? `${thread.providerId}:${thread.modelId}`
     : undefined
@@ -85,15 +83,6 @@ export function ChatPage({
             </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
-        <AppLayout.AsideTrigger
-          aria-label={appLayout?.isAsideOpen ? '关闭变更侧栏' : '打开变更侧栏'}
-          className="!absolute top-1.5 right-4 z-10 !m-0 !inline-flex data-[state=open]:bg-default"
-          closedTooltip="打开变更侧栏"
-          openTooltip="关闭变更侧栏"
-          tooltipProps={{ delay: 0, placement: 'bottom' }}
-          variant="tertiary"
-        />
-
         <Tabs.Panel
           className="min-h-0 flex-1 overflow-hidden p-0"
           id="conversation"

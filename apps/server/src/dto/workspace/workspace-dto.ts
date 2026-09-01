@@ -8,3 +8,10 @@ export interface WorkspaceDto {
   id: string
   name: string
 }
+
+export interface WorkspaceFileDto {
+  content: string
+  modifiedAt: number
+  path: string
+  size: number
+}

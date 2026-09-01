@@ -7,6 +7,22 @@
     --app-layout-aside-width: clamp(360px, 32vw, 420px);
   }
 
+  @media (prefers-reduced-motion: no-preference) {
+    .chat-layout--thread .app-layout__aside-panel {
+      opacity: 0;
+      transform: translateX(12px);
+      transition:
+        opacity 180ms ease-out,
+        transform 180ms ease-out;
+    }
+
+    .chat-layout--thread.chat-layout--file-preview-open
+      .app-layout__aside-panel {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   .chat-layout--thread .app-layout__header {
     display: none;
   }

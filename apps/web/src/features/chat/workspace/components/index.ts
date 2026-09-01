@@ -1,1 +1,1 @@
-export { WorkspaceChangesPanel } from './WorkspaceChangesPanel.tsx'
+export { WorkspaceFilePreview } from './WorkspaceFilePreview.tsx'

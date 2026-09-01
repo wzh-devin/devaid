@@ -10,7 +10,7 @@ import {
   type ChatThread,
   ChatWorkspaceContext,
   type ChatWorkspace,
-  WorkspaceChangesPanel,
+  WorkspaceFilePreview,
 } from '../features/chat/index.ts'
 import {
   type PluginSettingsTab,
@@ -46,12 +46,20 @@ export function ChatLayout({
 }: ChatLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isWorkspaceChangesOpen, setIsWorkspaceChangesOpen] = useState(false)
+  const [isFilePreviewOpen, setIsFilePreviewOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<{
+    path: string
+    workspaceId: string
+  }>()
   const [settingsTarget, setSettingsTarget] = useState<{
     pluginTab: PluginSettingsTab
     section: 'general' | 'plugins'
   }>({ pluginTab: 'skills', section: 'general' })
   const isThreadPage = activePage.kind === 'thread'
+  const activePageId = isThreadPage ? activePage.thread.id : activePage.kind
+  const activeWorkspaceId = isThreadPage
+    ? activePage.thread.workspaceId
+    : undefined
 
   const openPluginSettings = useCallback((pluginTab: PluginSettingsTab) => {
     setSettingsTarget({ pluginTab, section: 'plugins' })
@@ -65,6 +73,20 @@ export function ChatLayout({
     },
     [onNavigate],
   )
+
+  const handleFileOpen = useCallback(
+    (path: string) => {
+      if (!activeWorkspaceId) return
+      setSelectedFile({ path, workspaceId: activeWorkspaceId })
+      setIsFilePreviewOpen(true)
+    },
+    [activeWorkspaceId],
+  )
+
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- Thread 变化必须清除上一个工作区的文件选择。
+    setSelectedFile(undefined)
+  }, [activePageId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -87,21 +109,40 @@ export function ChatLayout({
       onOpenPluginSettings={openPluginSettings}
     >
       <ChatWorkspaceContext.Provider
-        value={{ onWorkspaceSelect, selectedWorkspaceId, workspaces }}
+        value={{
+          onFileOpen: activeWorkspaceId ? handleFileOpen : undefined,
+          onWorkspaceSelect,
+          selectedWorkspaceId,
+          workspaces,
+        }}
       >
         <AppLayout
-          aside={isThreadPage ? <WorkspaceChangesPanel /> : undefined}
+          aside={
+            isThreadPage &&
+            selectedFile &&
+            selectedFile.workspaceId === activeWorkspaceId ? (
+              <WorkspaceFilePreview
+                key={`${selectedFile.workspaceId}:${selectedFile.path}`}
+                path={selectedFile.path}
+                workspaceId={selectedFile.workspaceId}
+              />
+            ) : undefined
+          }
           asideDefaultSize="420px"
           asideMaxSize="50%"
           asideMinSize="360px"
           asideMobile="sheet"
-          asideOpen={isThreadPage && isWorkspaceChangesOpen}
-          asideResizable={isThreadPage}
-          className={isThreadPage ? 'chat-layout--thread' : undefined}
+          asideOpen={isThreadPage && isFilePreviewOpen}
+          asideResizable={isThreadPage && Boolean(selectedFile)}
+          className={
+            isThreadPage
+              ? `chat-layout--thread${isFilePreviewOpen ? ' chat-layout--file-preview-open' : ''}`
+              : undefined
+          }
           key={isThreadPage ? 'thread-layout' : 'standard-layout'}
           navigate={onNavigate}
           sidebarCollapsible="icon"
-          onAsideOpenChange={setIsWorkspaceChangesOpen}
+          onAsideOpenChange={setIsFilePreviewOpen}
           navbar={
             <ChatNavbar
               activePage={activePage}

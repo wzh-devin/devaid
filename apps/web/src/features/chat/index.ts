@@ -18,7 +18,7 @@ export {
   resolveComposerWorkspace,
   useChatWorkspace,
   useWorkspaces,
-  WorkspaceChangesPanel,
+  WorkspaceFilePreview,
 } from './workspace/index.ts'
 export type { ChatWorkspace } from './workspace/index.ts'
 export { createPendingChatThread, useAgentSessions } from './session/index.ts'

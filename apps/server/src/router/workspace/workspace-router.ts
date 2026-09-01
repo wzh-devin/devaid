@@ -11,10 +11,14 @@ const workspaceBodyLimit = bodyLimit({
 })
 
 /** 注册本地工作区查询与创建路由。 */
-export function createWorkspaceRouter(workspaces: WorkspaceStore) {
+export function createWorkspaceRouter(
+  workspaces: WorkspaceStore,
+  dataDirectory: string,
+) {
   const router = new Hono()
-  const controller = createWorkspaceController(workspaces)
+  const controller = createWorkspaceController(workspaces, dataDirectory)
   router.get('/', controller.list)
+  router.get('/:workspaceId/files/content', controller.readFile)
   router.post('/select', controller.select)
   router.post('/', workspaceBodyLimit, controller.create)
   return router

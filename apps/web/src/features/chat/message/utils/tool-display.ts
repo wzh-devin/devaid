@@ -15,6 +15,11 @@ interface ToolApprovalPresentation {
   target?: string
 }
 
+export interface ToolFilePresentation {
+  label: string
+  path: string
+}
+
 export const isToolActivityRunning = (
   tools: readonly ChatMessageTool[],
   status?: ChatAssistantStatus,
@@ -107,6 +112,23 @@ export const getToolArgsText = (tool: ChatMessageTool) => {
 const inputField = (input: unknown, key: string) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return
   return (input as Record<string, unknown>)[key]
+}
+
+/** 只把成功文件工具的结构化相对路径投影为可打开文件。 */
+export const getToolFilePresentation = (
+  tool: ChatMessageTool,
+): ToolFilePresentation | undefined => {
+  if (
+    tool.state !== 'output-available' ||
+    (tool.kind !== 'read' && tool.kind !== 'edit')
+  ) {
+    return
+  }
+  const path = inputField(tool.input, 'path')
+  if (typeof path !== 'string' || !path.trim() || path === '[blocked path]') {
+    return
+  }
+  return { label: tool.kind === 'read' ? '已读取' : '已编辑', path }
 }
 
 /** 为审批界面保留命令参数边界，避免含空格或引号的参数产生歧义。 */

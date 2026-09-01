@@ -1,4 +1,4 @@
-export { WorkspaceChangesPanel } from './components/index.ts'
+export { WorkspaceFilePreview } from './components/index.ts'
 export { ChatWorkspaceContext, useChatWorkspace } from './contexts/index.ts'
 export {
   findWorkspaceByThreadId,

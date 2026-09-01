@@ -16,6 +16,9 @@ importers:
       '@devaid/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
+      '@devaid/agent-tools':
+        specifier: workspace:*
+        version: link:../../packages/agent-tools
       '@devaid/llm':
         specifier: workspace:*
         version: link:../../packages/llm

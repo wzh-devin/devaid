@@ -53,7 +53,10 @@ export async function createApp(
     await sessionIndex.close()
   }
 
-  app.route('/api', createApiRouter(models, oauth, runtime, workspaces))
+  app.route(
+    '/api',
+    createApiRouter(models, oauth, runtime, workspaces, dataDirectory),
+  )
 
   return app
 }

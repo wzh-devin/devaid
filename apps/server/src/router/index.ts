@@ -18,6 +18,7 @@ export function createApiRouter(
   oauth: OAuthSessionService,
   runtime: AgentRuntime,
   workspaces: WorkspaceStore,
+  dataDirectory: string,
 ) {
   const router = new Hono()
   router.route('/health', createHealthRouter())
@@ -30,6 +31,6 @@ export function createApiRouter(
     '/agent/capabilities',
     createAgentCapabilityRouter(runtime, workspaces),
   )
-  router.route('/workspaces', createWorkspaceRouter(workspaces))
+  router.route('/workspaces', createWorkspaceRouter(workspaces, dataDirectory))
   return router
 }

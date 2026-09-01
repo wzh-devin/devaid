@@ -16,6 +16,7 @@
   "dependencies": {
     "@devaid/agent-policy": "workspace:*",
     "@devaid/agent-runtime": "workspace:*",
+    "@devaid/agent-tools": "workspace:*",
     "@devaid/llm": "workspace:*",
     "@earendil-works/pi-agent-core": "0.84.3",
     "@hono/node-server": "2.1.1",

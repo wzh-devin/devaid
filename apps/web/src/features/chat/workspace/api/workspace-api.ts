@@ -5,6 +5,13 @@ export interface WorkspaceVo {
   name: string
 }
 
+export interface WorkspaceFileVo {
+  content: string
+  modifiedAt: number
+  path: string
+  size: number
+}
+
 export class WorkspaceApiError extends Error {
   readonly code: string
   readonly status: number
@@ -49,3 +56,19 @@ export const createWorkspace = (path: string) =>
     headers: { 'content-type': 'application/json' },
     method: 'POST',
   })
+
+/** 读取注册工作区内经过服务端边界校验的 UTF-8 文本文件。 */
+export const readWorkspaceFile = (
+  workspaceId: string,
+  path: string,
+  signal?: AbortSignal,
+) => {
+  const query = new URLSearchParams({ path })
+  return request<WorkspaceFileVo>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/files/content?${query}`,
+    {
+      headers: { 'x-devaid-request': 'workspace-file-preview' },
+      signal,
+    },
+  )
+}

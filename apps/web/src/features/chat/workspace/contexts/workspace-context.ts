@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { ChatWorkspace } from '../data/workspace-data.ts'
 
 interface ChatWorkspaceContextValue {
+  onFileOpen?: (path: string) => void
   onWorkspaceSelect: (workspaceId: string) => void
   selectedWorkspaceId: string
   workspaces: readonly ChatWorkspace[]
