@@ -1,5 +1,6 @@
 export type {
   AgentRunEventVo,
+  BashOutcomeVo,
   AgentSessionMessagePageVo,
   AgentSessionMessagePartVo,
   AgentSessionMessageVo,

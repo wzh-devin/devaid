@@ -28,6 +28,7 @@ dist-ssr
 # Docs
 .template-design
 /.agents/skills/devin-project-context/
+/.devin-project-harness/
 AGENTS.md
 .impeccable
 .oh-my-harness-docs

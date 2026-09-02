@@ -19,6 +19,7 @@ import {
 import type { ChatMessageTool } from '../../data/chat-types.ts'
 import { useChatWorkspace } from '../../workspace/index.ts'
 import {
+  getBashOutcomeLabel,
   getToolArgsText,
   getToolFilePresentation,
   getToolStatus,
@@ -52,6 +53,7 @@ export function MessageTool({ tool }: MessageToolProps) {
 
   const status = getToolStatus(tool)
   const file = getToolFilePresentation(tool)
+  const outcomeLabel = getBashOutcomeLabel(tool)
   if (file && onFileOpen) {
     const FileIcon = TOOL_ICONS[tool.kind ?? 'tool']
     return (
@@ -82,6 +84,9 @@ export function MessageTool({ tool }: MessageToolProps) {
       <ToolFallbackContent>
         <ToolFallbackError status={status} />
         <ToolFallbackArgs argsText={getToolArgsText(tool)} />
+        {outcomeLabel ? (
+          <div className="px-3 pb-2 text-xs text-muted">{outcomeLabel}</div>
+        ) : null}
         <ToolFallbackResult result={tool.output} />
       </ToolFallbackContent>
     </ToolFallbackRoot>

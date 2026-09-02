@@ -31,6 +31,7 @@ const toChatTool = (
   errorText: tool.errorText,
   input: tool.input,
   kind: tool.kind,
+  outcome: tool.outcome,
   output: tool.output,
   state: tool.state,
   toolCallId: tool.toolCallId,

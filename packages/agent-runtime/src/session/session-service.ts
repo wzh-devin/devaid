@@ -18,6 +18,7 @@ import type {
 
 import { AgentRuntimeError } from '../error/agent-runtime-error.ts'
 import { structuredMessageDetails } from '../execution/attachment-message.ts'
+import { safeBashOutcome } from '../execution/bash-outcome.ts'
 import type {
   AgentMessageAttachment,
   AgentMessageContextItem,
@@ -88,6 +89,7 @@ export interface AgentSessionTool {
   errorText?: string
   input: Record<string, unknown>
   kind: 'command' | 'edit' | 'read' | 'skill'
+  outcome?: import('@devaid/agent-tools').BashOutcome
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string
@@ -195,18 +197,12 @@ function safeToolInput(input: Record<string, unknown>) {
       ? { attachmentId }
       : { attachmentId: '[blocked id]' }
   }
-  if (
-    typeof input.program === 'string' &&
-    input.program.length > 0 &&
-    input.program.length <= 255 &&
-    !input.program.includes('\0') &&
-    Array.isArray(input.args) &&
-    input.args.length <= 128 &&
-    input.args.every(
-      (argument) => typeof argument === 'string' && !argument.includes('\0'),
-    )
-  ) {
-    return { args: [...input.args], program: input.program }
+  if (typeof input.command === 'string') {
+    return input.command &&
+      !input.command.includes('\0') &&
+      Buffer.byteLength(input.command) <= 32 * 1024
+      ? { command: input.command }
+      : { command: '[blocked command]' }
   }
   const path = typeof input.path === 'string' ? input.path : undefined
   if (
@@ -229,11 +225,13 @@ function toSessionTool(
 ): AgentSessionTool {
   const result = toolResults.get(toolCall.id)
   const output = result ? toolResultText(result) : undefined
+  const outcome =
+    toolCall.name === 'bash' ? safeBashOutcome(result?.details) : undefined
   return {
     ...(result?.isError && output ? { errorText: output } : {}),
     input: safeToolInput(toolCall.arguments),
     kind:
-      toolCall.name === 'command'
+      toolCall.name === 'bash' || toolCall.name === 'command'
         ? 'command'
         : toolCall.name === 'read'
           ? 'read'
@@ -243,6 +241,7 @@ function toSessionTool(
               ? 'read'
               : 'edit',
     ...(!result?.isError && output ? { output } : {}),
+    ...(outcome ? { outcome } : {}),
     state: result
       ? result.isError
         ? 'output-error'

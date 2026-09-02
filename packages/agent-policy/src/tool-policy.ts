@@ -19,14 +19,14 @@ export interface FileToolAuthorizationRequest extends ToolAuthorizationBase {
   toolName: 'edit' | 'read' | 'write'
 }
 
-export interface CommandToolAuthorizationRequest extends ToolAuthorizationBase {
-  command: { args: string[]; program: string }
+export interface BashToolAuthorizationRequest extends ToolAuthorizationBase {
+  command: string
   effect: 'execute'
-  toolName: 'command'
+  toolName: 'bash'
 }
 
 export type ToolAuthorizationRequest =
-  CommandToolAuthorizationRequest | FileToolAuthorizationRequest
+  BashToolAuthorizationRequest | FileToolAuthorizationRequest
 
 export type PendingToolApproval = ToolAuthorizationRequest & {
   approvalId: string
@@ -74,7 +74,7 @@ export const isToolPermission = (value: unknown): value is ToolPermission =>
 export const evaluateToolPolicy = (
   request: ToolAuthorizationRequest,
 ): 'allow' | 'deny' | 'require-approval' => {
-  if (request.toolName === 'command' && request.effect === 'execute') {
+  if (request.toolName === 'bash' && request.effect === 'execute') {
     return 'require-approval'
   }
   if (request.toolName === 'read' && request.effect === 'read') return 'allow'

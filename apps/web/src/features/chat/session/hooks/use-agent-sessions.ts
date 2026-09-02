@@ -44,7 +44,7 @@ const toolOutputText = (output: unknown) => {
 }
 
 const toolKind = (toolName: string): ChatMessageTool['kind'] =>
-  toolName === 'command'
+  toolName === 'bash' || toolName === 'command'
     ? 'command'
     : toolName === 'read' || toolName === 'view_attachment'
       ? 'read'
@@ -565,6 +565,7 @@ export function useAgentSessions() {
                                 (tool) => tool.toolCallId === event.toolCallId,
                               )?.input ?? {},
                             kind: toolKind(event.toolName),
+                            outcome: event.outcome,
                             state: event.isError
                               ? 'output-error'
                               : 'output-available',

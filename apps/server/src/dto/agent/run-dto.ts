@@ -1,6 +1,13 @@
 import type { ToolPermission } from '@devaid/agent-policy'
 import type { AgentRunAttachment } from '@devaid/agent-runtime'
 
+export interface BashOutcomeDto {
+  exitCode: number | null
+  outputExceeded: boolean
+  signal: string | null
+  timedOut: boolean
+}
+
 export interface SendAgentMessageDto {
   attachments?: readonly AgentRunAttachment[]
   commandId?: string
@@ -21,6 +28,7 @@ export type AgentRunEventDto =
     }
   | {
       isError: boolean
+      outcome?: BashOutcomeDto
       output: unknown
       toolCallId: string
       toolName: string
@@ -37,11 +45,11 @@ export type AgentRunEventDto =
     }
   | {
       approvalId: string
-      input: { args: string[]; program: string }
+      input: { command: string }
       kind: 'command'
       title: string
       toolCallId: string
-      toolName: 'command'
+      toolName: 'bash'
       type: 'tool_approval_required'
     }
   | {

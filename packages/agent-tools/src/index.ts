@@ -10,5 +10,6 @@ export {
   createAttachmentTool,
   type AttachmentResource,
 } from './tools/attachment.ts'
-export { createCommandTool } from './tools/command.ts'
+export { createBashTool, parseBashInput } from './tools/bash.ts'
+export type { BashInput, BashOutcome } from './tools/bash.ts'
 export { WorkspaceExecutionEnv } from './workspace/execution-env.ts'

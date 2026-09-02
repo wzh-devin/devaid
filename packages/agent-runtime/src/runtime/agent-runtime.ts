@@ -41,6 +41,7 @@ import {
   attachmentResourcesFromEntries,
   convertAttachmentMessagesToLlm,
 } from '../execution/attachment-message.ts'
+import { safeBashOutcome } from '../execution/bash-outcome.ts'
 import type { AgentRun, AgentRuntimeEvent } from '../execution/runtime-event.ts'
 import type {
   AgentMessageAttachment,
@@ -197,18 +198,12 @@ function safeToolInput(input: unknown) {
       ? { attachmentId }
       : { attachmentId: '[blocked id]' }
   }
-  if (
-    typeof values.program === 'string' &&
-    values.program.length > 0 &&
-    values.program.length <= 255 &&
-    !values.program.includes('\0') &&
-    Array.isArray(values.args) &&
-    values.args.length <= 128 &&
-    values.args.every(
-      (argument) => typeof argument === 'string' && !argument.includes('\0'),
-    )
-  ) {
-    return { args: [...values.args], program: values.program }
+  if (typeof values.command === 'string') {
+    return values.command &&
+      !values.command.includes('\0') &&
+      Buffer.byteLength(values.command) <= 32 * 1024
+      ? { command: values.command }
+      : { command: '[blocked command]' }
   }
   const path = values.path
   if (
@@ -771,8 +766,13 @@ export class AgentRuntime {
         type: 'tool_start',
       })
     } else if (event.type === 'tool_execution_end') {
+      const outcome =
+        event.toolName === 'bash'
+          ? safeBashOutcome(event.result?.details)
+          : undefined
       events.push({
         isError: event.isError,
+        ...(outcome ? { outcome } : {}),
         output: event.result?.content,
         toolCallId: event.toolCallId,
         toolName: event.toolName,
@@ -785,11 +785,11 @@ export class AgentRuntime {
     if (approval.effect === 'execute') {
       return {
         approvalId: approval.approvalId,
-        input: approval.command,
+        input: { command: approval.command },
         kind: 'command' as const,
-        title: `允许 AI 助手运行 ${approval.command.program} 吗？`,
+        title: '允许 AI 助手运行这条命令吗？',
         toolCallId: approval.toolCallId,
-        toolName: 'command' as const,
+        toolName: 'bash' as const,
         type: 'tool_approval_required' as const,
       }
     }
@@ -812,12 +812,7 @@ export class AgentRuntime {
     await session.appendCustomEntry('devaid_tool_approval_requested', {
       approvalId: approval.approvalId,
       effect: approval.effect,
-      ...(approval.effect === 'execute'
-        ? {
-            argumentCount: approval.command.args.length,
-            program: approval.command.program,
-          }
-        : { path: approval.path }),
+      ...(approval.effect === 'execute' ? {} : { path: approval.path }),
       runId: approval.runId,
       toolCallId: approval.toolCallId,
       toolName: approval.toolName,

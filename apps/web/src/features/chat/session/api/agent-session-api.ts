@@ -2,6 +2,7 @@ import type {
   AgentRunEventVo,
   AgentSessionMessagePageVo,
   AgentSessionVo,
+  BashOutcomeVo,
   PendingToolApprovalVo,
 } from '../types/index.ts'
 import type { ApprovalDecision } from '../../message/index.ts'
@@ -48,21 +49,36 @@ export class AgentSessionApiError extends Error {
   }
 }
 
-const commandInput = (
-  value: unknown,
-): { args: string[]; program: string } | undefined => {
+const bashInput = (value: unknown): { command: string } | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return undefined
   }
   const input = value as Record<string, unknown>
-  return typeof input.program === 'string' &&
-    input.program.length > 0 &&
-    input.program.length <= 255 &&
-    !input.program.includes('\0') &&
-    Array.isArray(input.args) &&
-    input.args.every((argument) => typeof argument === 'string')
-    ? { args: input.args as string[], program: input.program }
+  return typeof input.command === 'string' &&
+    input.command.length > 0 &&
+    !input.command.includes('\0') &&
+    new TextEncoder().encode(input.command).byteLength <= 32 * 1024
+    ? { command: input.command }
     : undefined
+}
+
+const bashOutcome = (value: unknown): BashOutcomeVo | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return
+  const outcome = value as Record<string, unknown>
+  if (
+    (typeof outcome.exitCode !== 'number' && outcome.exitCode !== null) ||
+    typeof outcome.outputExceeded !== 'boolean' ||
+    (typeof outcome.signal !== 'string' && outcome.signal !== null) ||
+    typeof outcome.timedOut !== 'boolean'
+  ) {
+    return
+  }
+  return {
+    exitCode: outcome.exitCode,
+    outputExceeded: outcome.outputExceeded,
+    signal: outcome.signal,
+    timedOut: outcome.timedOut,
+  } as BashOutcomeVo
 }
 
 const sessionPath = (sessionId: string) =>
@@ -126,6 +142,9 @@ function toRunEvent(value: unknown): AgentRunEventVo {
       ) {
         return {
           isError: event.isError,
+          ...(event.toolName === 'bash'
+            ? { outcome: bashOutcome(event.outcome) }
+            : {}),
           output: event.output,
           toolCallId: event.toolCallId,
           toolName: event.toolName,
@@ -137,11 +156,11 @@ function toRunEvent(value: unknown): AgentRunEventVo {
       if (
         typeof event.approvalId === 'string' &&
         event.kind === 'command' &&
-        event.toolName === 'command' &&
+        event.toolName === 'bash' &&
         typeof event.title === 'string' &&
         typeof event.toolCallId === 'string'
       ) {
-        const input = commandInput(event.input)
+        const input = bashInput(event.input)
         if (input) {
           return {
             approvalId: event.approvalId,
@@ -149,7 +168,7 @@ function toRunEvent(value: unknown): AgentRunEventVo {
             kind: 'command',
             title: event.title,
             toolCallId: event.toolCallId,
-            toolName: 'command',
+            toolName: 'bash',
             type: 'tool_approval_required',
           }
         }

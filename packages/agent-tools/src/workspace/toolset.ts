@@ -12,14 +12,14 @@ import {
   type ExecutionToolContext,
 } from '@earendil-works/pi-agent-core'
 
-import { createCommandTool, parseCommandInput } from '../tools/command.ts'
+import { createBashTool, parseBashInput } from '../tools/bash.ts'
 import { createEditTool } from '../tools/edit.ts'
 import { createReadTool } from '../tools/read.ts'
 import { createWriteTool } from '../tools/write.ts'
 import { WorkspaceExecutionEnv } from './execution-env.ts'
 
 export const WORKSPACE_TOOLS_SYSTEM_PROMPT =
-  'File tools are limited to workspace-relative paths. The command tool can run installed programs with structured arguments only after user approval.'
+  'File tools are limited to workspace-relative paths. The bash tool runs a complete Bash command from the workspace only after user approval. Put the full command in command, including pipes or redirections when needed, and inspect its exit marker before continuing.'
 
 interface WorkspaceToolsOptions {
   cwd: string
@@ -44,11 +44,11 @@ const bindTool = <TContext extends ExecutionToolContext>(
 const toolKind = (
   toolName: string,
 ):
-  | { effect: 'execute'; toolName: 'command' }
+  | { effect: 'execute'; toolName: 'bash' }
   | { effect: 'read'; toolName: 'read' }
   | { effect: 'write'; toolName: 'edit' | 'write' }
   | undefined => {
-  if (toolName === 'command') return { effect: 'execute', toolName }
+  if (toolName === 'bash') return { effect: 'execute', toolName }
   if (toolName === 'read') return { effect: 'read' as const, toolName }
   if (toolName === 'write' || toolName === 'edit') {
     return { effect: 'write' as const, toolName }
@@ -73,7 +73,7 @@ export const createWorkspaceTools = async (options: WorkspaceToolsOptions) => {
     bindTool(createReadTool(), context),
     bindTool(createWriteTool(), context),
     bindTool(createEditTool(), context),
-    await createCommandTool(env.cwd),
+    createBashTool(env.cwd),
   ]
 
   const beforeToolCall = async (
@@ -86,7 +86,7 @@ export const createWorkspaceTools = async (options: WorkspaceToolsOptions) => {
     }
     try {
       if (kind.effect === 'execute') {
-        const command = parseCommandInput(call.args)
+        const { command } = parseBashInput(call.args)
         await options.policy.authorize(
           {
             command,
@@ -95,7 +95,7 @@ export const createWorkspaceTools = async (options: WorkspaceToolsOptions) => {
             runId: options.runId,
             sessionId: options.sessionId,
             toolCallId: call.toolCall.id,
-            toolName: 'command',
+            toolName: 'bash',
           },
           {
             onRequested: options.onApprovalRequested,

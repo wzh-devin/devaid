@@ -25,10 +25,18 @@ export interface AgentSessionToolVo {
   errorText?: string
   input: Record<string, unknown>
   kind: 'command' | 'edit' | 'read' | 'skill'
+  outcome?: BashOutcomeVo
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string
   toolName: string
+}
+
+export interface BashOutcomeVo {
+  exitCode: number | null
+  outputExceeded: boolean
+  signal: string | null
+  timedOut: boolean
 }
 
 export type AgentSessionMessagePartVo =
@@ -52,6 +60,7 @@ export type AgentRunEventVo =
     }
   | {
       isError: boolean
+      outcome?: BashOutcomeVo
       output: unknown
       toolCallId: string
       toolName: string
@@ -68,11 +77,11 @@ export type AgentRunEventVo =
     }
   | {
       approvalId: string
-      input: { args: string[]; program: string }
+      input: { command: string }
       kind: 'command'
       title: string
       toolCallId: string
-      toolName: 'command'
+      toolName: 'bash'
       type: 'tool_approval_required'
     }
   | {

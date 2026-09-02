@@ -1,3 +1,5 @@
+import type { BashOutcome } from '@devaid/agent-tools'
+
 export type AgentRuntimeEvent =
   | { sessionId: string; type: 'start' }
   | { delta: string; type: 'text_delta' }
@@ -10,6 +12,7 @@ export type AgentRuntimeEvent =
     }
   | {
       isError: boolean
+      outcome?: BashOutcome
       output: unknown
       toolCallId: string
       toolName: string
@@ -26,11 +29,11 @@ export type AgentRuntimeEvent =
     }
   | {
       approvalId: string
-      input: { args: string[]; program: string }
+      input: { command: string }
       kind: 'command'
       title: string
       toolCallId: string
-      toolName: 'command'
+      toolName: 'bash'
       type: 'tool_approval_required'
     }
   | {

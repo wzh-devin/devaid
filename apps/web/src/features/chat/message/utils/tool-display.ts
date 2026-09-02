@@ -1,8 +1,14 @@
 import type { ToolCallMessagePartStatus } from '@assistant-ui/react'
 import type {
   ChatAssistantStatus,
+  ChatMessageActivityPart,
   ChatMessageTool,
 } from '../../data/chat-types.ts'
+
+export type ToolActivityDisplayPart =
+  | Exclude<ChatMessageActivityPart, { type: 'tool' }>
+  | { tool: ChatMessageTool; type: 'tool' }
+  | { tools: readonly ChatMessageTool[]; type: 'tool-group' }
 
 export interface ToolActivitySummary {
   label: string
@@ -61,10 +67,7 @@ export const getToolActivitySummary = (
     durationMs === undefined
       ? undefined
       : `用时 ${formatToolActivityDuration(durationMs)}`
-  const failureCount = tools.filter(
-    (tool) => tool.state === 'output-error',
-  ).length
-  if (hasRunError || failureCount) {
+  if (hasRunError) {
     return {
       label: durationLabel ? `运行失败 · ${durationLabel}` : '工具运行失败',
       state: 'failed',
@@ -80,6 +83,51 @@ export const getToolActivitySummary = (
     label: durationLabel ?? '工具活动',
     state: 'complete',
   }
+}
+
+/** 以文本和推理为边界，把两个以上连续工具合并为展示子组。 */
+export const groupConsecutiveToolParts = (
+  parts: readonly ChatMessageActivityPart[],
+): ToolActivityDisplayPart[] => {
+  const groupedParts: ToolActivityDisplayPart[] = []
+  let tools: ChatMessageTool[] = []
+  const flushTools = () => {
+    if (tools.length === 1) groupedParts.push({ tool: tools[0]!, type: 'tool' })
+    else if (tools.length > 1) groupedParts.push({ tools, type: 'tool-group' })
+    tools = []
+  }
+
+  for (const part of parts) {
+    if (part.type === 'tool') tools.push(part.tool)
+    else {
+      flushTools()
+      groupedParts.push(part)
+    }
+  }
+  flushTools()
+  return groupedParts
+}
+
+const TOOL_GROUP_LABELS: Record<
+  NonNullable<ChatMessageTool['kind']>,
+  string
+> = {
+  browser: '浏览了网页',
+  command: '运行了命令',
+  edit: '编辑了文件',
+  read: '读取文件',
+  search: '进行了搜索',
+  skill: '加载了工具',
+  tool: '调用了工具',
+}
+
+/** 按首次出现顺序汇总工具类别，生成 Codex 风格子组标题。 */
+export const getToolGroupLabel = (tools: readonly ChatMessageTool[]) => {
+  const kinds = [
+    ...new Set(tools.map((tool) => tool.kind ?? ('tool' as const))),
+  ]
+  const label = kinds.map((kind) => TOOL_GROUP_LABELS[kind]).join('')
+  return kinds[0] === 'read' ? `已${label}` : label
 }
 
 /** 将现有工具状态投影到 assistant-ui ToolFallback 状态。 */
@@ -108,6 +156,16 @@ export const getToolArgsText = (tool: ChatMessageTool) => {
   }
 }
 
+/** 直接使用结构化 Bash outcome 展示退出状态，不从输出文本反推。 */
+export const getBashOutcomeLabel = (tool: ChatMessageTool) => {
+  const outcome = tool.kind === 'command' ? tool.outcome : undefined
+  if (!outcome) return
+  if (outcome.outputExceeded) return '输出超过 256 KiB'
+  if (outcome.timedOut) return '执行超时'
+  if (outcome.signal) return `信号 ${outcome.signal}`
+  return `退出码 ${outcome.exitCode ?? '未知'}`
+}
+
 /** 从未知工具输入中读取一个字段，不信任跨边界参数形状。 */
 const inputField = (input: unknown, key: string) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return
@@ -131,28 +189,20 @@ export const getToolFilePresentation = (
   return { label: tool.kind === 'read' ? '已读取' : '已编辑', path }
 }
 
-/** 为审批界面保留命令参数边界，避免含空格或引号的参数产生歧义。 */
-const formatCommandToken = (token: string) =>
-  /^[A-Za-z0-9_@%+=:,./-]+$/u.test(token) ? token : JSON.stringify(token)
-
 /** 将待审批工具转换为用户可直接核对的操作、问题与目标。 */
 export const getToolApprovalPresentation = (
   tool: ChatMessageTool,
 ): ToolApprovalPresentation => {
   if (tool.kind === 'command') {
-    const program = inputField(tool.input, 'program')
-    const args = inputField(tool.input, 'args')
-    const command =
-      typeof program === 'string' &&
-      Array.isArray(args) &&
-      args.every((arg): arg is string => typeof arg === 'string')
-        ? [program, ...args].map(formatCommandToken).join(' ')
-        : ''
+    const command = inputField(tool.input, 'command')
 
     return {
       label: '运行命令',
       question: '是否允许 Devaid 运行以下命令？',
-      target: command || tool.approval?.description,
+      target:
+        typeof command === 'string' && command
+          ? command
+          : tool.approval?.description,
     }
   }
 

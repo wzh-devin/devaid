@@ -42,6 +42,12 @@ export interface ChatMessageTool {
   input?: unknown
   kind?: 'browser' | 'command' | 'edit' | 'read' | 'search' | 'skill' | 'tool'
   label?: string
+  outcome?: {
+    exitCode: number | null
+    outputExceeded: boolean
+    signal: string | null
+    timedOut: boolean
+  }
   output?: unknown
   state: ToolPartState
   toolCallId?: string

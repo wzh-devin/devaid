@@ -289,11 +289,11 @@ export function createAgentRunController(runtime: AgentRuntime) {
         if (approval.effect === 'execute') {
           return context.json({
             approvalId: approval.approvalId,
-            input: approval.command,
+            input: { command: approval.command },
             kind: 'command',
-            title: `允许 AI 助手运行 ${approval.command.program} 吗？`,
+            title: '允许 AI 助手运行这条命令吗？',
             toolCallId: approval.toolCallId,
-            toolName: 'command',
+            toolName: 'bash',
           })
         }
         const kind = approval.toolName === 'read' ? 'read' : 'edit'

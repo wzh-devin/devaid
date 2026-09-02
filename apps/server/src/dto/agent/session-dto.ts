@@ -45,6 +45,12 @@ export interface AgentSessionToolDto {
   errorText?: string
   input: Record<string, unknown>
   kind: 'command' | 'edit' | 'read' | 'skill'
+  outcome?: {
+    exitCode: number | null
+    outputExceeded: boolean
+    signal: string | null
+    timedOut: boolean
+  }
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string

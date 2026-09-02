@@ -15,9 +15,12 @@ import {
 import type {
   ChatAssistantStatus,
   ChatMessageActivity,
+  ChatMessageTool,
 } from '../../data/chat-types.ts'
 import {
+  getToolGroupLabel,
   getToolActivitySummary,
+  groupConsecutiveToolParts,
   isToolActivityRunning,
 } from '../utils/tool-display.ts'
 import { MessageMarkdown } from './MessageMarkdown.tsx'
@@ -34,6 +37,32 @@ const ACTIVITY_ICONS = {
   failed: XCircleIcon,
   running: LoaderCircleIcon,
 } as const
+
+/** 折叠展示同一文本区间内的连续工具调用。 */
+function ToolCallGroup({ tools }: { tools: readonly ChatMessageTool[] }) {
+  return (
+    <Collapsible defaultOpen={false}>
+      <CollapsibleTrigger className="group/tool-group-trigger flex max-w-full min-w-0 w-fit items-center gap-2 rounded-md py-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <WrenchIcon aria-hidden="true" className="size-4 shrink-0" />
+        <span className="min-w-0 truncate">{getToolGroupLabel(tools)}</span>
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="size-3.5 shrink-0 -rotate-90 transition-transform group-data-panel-open/tool-group-trigger:rotate-0 motion-reduce:transition-none"
+        />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="overflow-hidden pl-5 data-closed:animate-collapsible-up data-open:animate-collapsible-down motion-reduce:animate-none">
+        <div className="flex flex-col gap-1 py-1">
+          {tools.map((tool, index) => (
+            <MessageTool
+              key={tool.toolCallId ?? `${tool.toolName}-${index}`}
+              tool={tool}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
 
 /** 默认折叠连续工具调用，并保留可展开的过程详情。 */
 export function ToolActivity({ activity, status }: ToolActivityProps) {
@@ -65,6 +94,7 @@ export function ToolActivity({ activity, status }: ToolActivityProps) {
     ...(activity.text ? [{ text: activity.text, type: 'text' as const }] : []),
     ...activity.tools.map((tool) => ({ tool, type: 'tool' as const })),
   ]
+  const displayParts = groupConsecutiveToolParts(parts)
 
   return (
     <Collapsible
@@ -97,7 +127,7 @@ export function ToolActivity({ activity, status }: ToolActivityProps) {
 
       <CollapsibleContent className="overflow-hidden pl-5 data-closed:animate-collapsible-up data-open:animate-collapsible-down motion-reduce:animate-none">
         <div className="flex flex-col gap-2 pt-1 pb-2">
-          {parts.map((part, index) => {
+          {displayParts.map((part, index) => {
             if (part.type === 'reasoning') {
               return (
                 <ReasoningPanel
@@ -111,6 +141,14 @@ export function ToolActivity({ activity, status }: ToolActivityProps) {
                 <ChatMessagePrimitive.Content key={`text-${index}`}>
                   <MessageMarkdown>{part.text}</MessageMarkdown>
                 </ChatMessagePrimitive.Content>
+              )
+            }
+            if (part.type === 'tool-group') {
+              return (
+                <ToolCallGroup
+                  key={`tool-group-${part.tools[0]?.toolCallId ?? index}`}
+                  tools={part.tools}
+                />
               )
             }
             return (
