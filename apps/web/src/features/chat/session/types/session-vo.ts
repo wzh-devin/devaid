@@ -1,4 +1,5 @@
 export interface AgentSessionVo {
+  archived: boolean
   createdAt: number
   id: string
   modelId: string

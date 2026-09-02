@@ -11,7 +11,8 @@ import { join, resolve } from 'node:path'
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
 
 const APPLICATION_ID = 0x44564149 // DVAI
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
+const ARCHIVE_ENTRY_TYPE = 'devaid_session_archived'
 const DATABASE_NAME = 'session-index.sqlite'
 const COLUMNS = [
   'id',
@@ -22,6 +23,7 @@ const COLUMNS = [
   'name',
   'provider_id',
   'model_id',
+  'archived',
   'source_size',
   'source_mtime_ms',
   'next_byte_offset',
@@ -29,6 +31,7 @@ const COLUMNS = [
 ]
 
 interface SessionIndexRow {
+  archived: boolean
   createdAt: number
   cwd: string
   id: string
@@ -77,8 +80,21 @@ function mutationTimestamp(value: Record<string, unknown>) {
     : undefined
 }
 
+function archiveDataState(data: unknown) {
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    Array.isArray(data) ||
+    typeof (data as Record<string, unknown>).archived !== 'boolean'
+  ) {
+    throw new Error('Session archive entry is invalid')
+  }
+  return (data as { archived: boolean }).archived
+}
+
 function indexInfo(row: SessionIndexRow): AgentSessionInfo {
   return {
+    archived: row.archived,
     createdAt: row.createdAt,
     cwd: row.cwd,
     id: row.id,
@@ -99,6 +115,7 @@ function decodeRow(value: Record<string, unknown>): SessionIndexRow {
     (row.name !== null && typeof row.name !== 'string') ||
     typeof row.provider_id !== 'string' ||
     typeof row.model_id !== 'string' ||
+    (row.archived !== 0 && row.archived !== 1) ||
     typeof row.source_size !== 'number' ||
     typeof row.source_mtime_ms !== 'number' ||
     typeof row.next_byte_offset !== 'number' ||
@@ -107,6 +124,7 @@ function decodeRow(value: Record<string, unknown>): SessionIndexRow {
     throw new Error('Session index row is invalid')
   }
   return {
+    archived: row.archived === 1,
     createdAt: row.created_at,
     cwd: row.cwd,
     id: row.id,
@@ -135,6 +153,7 @@ function createSchema(database: DatabaseSync) {
       name                TEXT,
       provider_id         TEXT NOT NULL,
       model_id            TEXT NOT NULL,
+      archived            INTEGER NOT NULL CHECK (archived IN (0, 1)),
       source_size         INTEGER NOT NULL,
       source_mtime_ms     INTEGER NOT NULL,
       next_byte_offset    INTEGER NOT NULL,
@@ -506,6 +525,13 @@ export class SessionIndex implements AgentSessionProjection {
         }
         next.providerId = value.provider
         next.modelId = value.modelId
+      } else if (
+        value.kind === 'entry' &&
+        value.type === 'custom' &&
+        value.customType === ARCHIVE_ENTRY_TYPE &&
+        (value.lane === undefined || value.lane === 'main')
+      ) {
+        next.archived = archiveDataState(value.data)
       }
     }
     next.sourceSize = source.size
@@ -519,11 +545,16 @@ export class SessionIndex implements AgentSessionProjection {
 
   private async fullProjection(metadata: JsonlSessionMetadata) {
     const session = await this.repository.open(metadata)
-    const [name, modelChange, log] = await Promise.all([
+    const [name, modelChange, archiveEntry, log] = await Promise.all([
       session.getName(),
       session.findEntryOnBranch({
         order: 'newestFirst',
         type: 'model_change',
+      }),
+      session.findEntryOnBranch({
+        customType: ARCHIVE_ENTRY_TYPE,
+        order: 'newestFirst',
+        type: 'custom',
       }),
       session.getLog(),
     ])
@@ -540,6 +571,10 @@ export class SessionIndex implements AgentSessionProjection {
       }
     }
     return {
+      archived:
+        archiveEntry?.type === 'custom'
+          ? archiveDataState(archiveEntry.data)
+          : false,
       createdAt: metadata.createdAt,
       cwd: metadata.cwd,
       id: metadata.id,
@@ -565,9 +600,9 @@ export class SessionIndex implements AgentSessionProjection {
     return database.prepare(`
       INSERT INTO sessions (
         id, rollout_path, cwd, created_at, updated_at, name,
-        provider_id, model_id, source_size, source_mtime_ms,
+        provider_id, model_id, archived, source_size, source_mtime_ms,
         next_byte_offset, last_seq
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         rollout_path = excluded.rollout_path,
         cwd = excluded.cwd,
@@ -576,6 +611,7 @@ export class SessionIndex implements AgentSessionProjection {
         name = excluded.name,
         provider_id = excluded.provider_id,
         model_id = excluded.model_id,
+        archived = excluded.archived,
         source_size = excluded.source_size,
         source_mtime_ms = excluded.source_mtime_ms,
         next_byte_offset = excluded.next_byte_offset,
@@ -593,6 +629,7 @@ export class SessionIndex implements AgentSessionProjection {
       row.name,
       row.providerId,
       row.modelId,
+      row.archived ? 1 : 0,
       row.sourceSize,
       row.sourceMtimeMs,
       row.nextByteOffset,

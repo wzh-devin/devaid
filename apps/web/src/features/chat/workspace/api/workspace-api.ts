@@ -57,6 +57,12 @@ export const createWorkspace = (path: string) =>
     method: 'POST',
   })
 
+/** 删除工作区注册及其全部会话，不删除磁盘目录。 */
+export const deleteWorkspace = (workspaceId: string) =>
+  request<void>(`/api/workspaces/${encodeURIComponent(workspaceId)}`, {
+    method: 'DELETE',
+  })
+
 /** 读取注册工作区内经过服务端边界校验的 UTF-8 文本文件。 */
 export const readWorkspaceFile = (
   workspaceId: string,

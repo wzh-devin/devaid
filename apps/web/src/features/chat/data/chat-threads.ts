@@ -11,6 +11,7 @@ const DEFAULT_USER = {
 export const CHAT_THREADS: readonly ChatThread[] = [
   SHOWCASE_THREAD,
   {
+    archived: false,
     id: 'quick-recipes-for-dinner',
     messages: [
       {
@@ -64,6 +65,7 @@ export const CHAT_THREADS: readonly ChatThread[] = [
     user: DEFAULT_USER,
   },
   {
+    archived: false,
     id: 'launch-plan-for-q3-rollout',
     messages: [
       {
@@ -98,6 +100,7 @@ export const CHAT_THREADS: readonly ChatThread[] = [
     user: DEFAULT_USER,
   },
   {
+    archived: false,
     id: 'rewrite-homepage-value-prop',
     messages: [
       {
@@ -131,6 +134,7 @@ export const CHAT_THREADS: readonly ChatThread[] = [
     user: DEFAULT_USER,
   },
   {
+    archived: false,
     id: 'weekly-team-update-summary',
     messages: [
       {

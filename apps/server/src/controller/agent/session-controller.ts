@@ -53,6 +53,11 @@ function parseCreateSession(value: unknown): CreateAgentSessionDto | undefined {
 
 function parseUpdateSession(value: unknown): UpdateAgentSessionDto | undefined {
   if (!isObject(value)) return undefined
+  if (hasOnlyKeys(value, ['archived']) && Object.hasOwn(value, 'archived')) {
+    return typeof value.archived === 'boolean'
+      ? { archived: value.archived }
+      : undefined
+  }
   if (hasOnlyKeys(value, ['name']) && Object.hasOwn(value, 'name')) {
     if (value.name === null) return { name: null }
     if (typeof value.name !== 'string') return undefined
@@ -98,6 +103,7 @@ function sessionDto(
   workspaceId: string | null,
 ): AgentSessionDto {
   return {
+    archived: session.archived,
     createdAt: session.createdAt,
     id: session.id,
     modelId: session.modelId,
@@ -162,14 +168,28 @@ export function createAgentSessionController(
         )
       }
       try {
-        const workspace = await workspaces.requireAvailable(input.workspaceId)
-        const session = await runtime.createSession({
-          cwd: workspace.path,
-          modelId: input.modelId,
-          ...(input.name ? { name: input.name } : {}),
-          providerId: input.providerId,
-        })
-        return context.json(sessionDto(session, workspace.id), 201)
+        const session = await workspaces.withAvailable(
+          input.workspaceId,
+          async (workspace) =>
+            sessionDto(
+              await runtime.createSession({
+                cwd: workspace.path,
+                modelId: input.modelId,
+                ...(input.name ? { name: input.name } : {}),
+                providerId: input.providerId,
+              }),
+              workspace.id,
+            ),
+        )
+        return context.json(session, 201)
+      } catch (error) {
+        return agentErrorResponse(context, error)
+      }
+    },
+    clearArchived: async (context: Context) => {
+      try {
+        await runtime.deleteArchivedSessions()
+        return context.body(null, 204)
       } catch (error) {
         return agentErrorResponse(context, error)
       }
@@ -264,7 +284,15 @@ export function createAgentSessionController(
                 context.req.param('id')!,
                 input.name ?? undefined,
               )
-            : await runtime.updateSessionModel(context.req.param('id')!, input)
+            : 'archived' in input
+              ? await runtime.archiveSession(
+                  context.req.param('id')!,
+                  input.archived,
+                )
+              : await runtime.updateSessionModel(
+                  context.req.param('id')!,
+                  input,
+                )
         const ids = await workspaceMap(workspaces)
         return context.json(sessionDto(session, ids.get(session.cwd) ?? null))
       } catch (error) {

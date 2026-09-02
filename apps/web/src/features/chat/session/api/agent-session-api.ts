@@ -20,6 +20,14 @@ interface UpdateAgentSessionModelInput {
   providerId: string
 }
 
+interface UpdateAgentSessionArchiveInput {
+  archived: boolean
+}
+
+interface RenameAgentSessionInput {
+  name: string
+}
+
 interface ParsedSseFrames {
   events: AgentRunEventVo[]
   remainder: string
@@ -270,6 +278,14 @@ export function parseAgentSseFrames(source: string): ParsedSseFrames {
 export const listAgentSessions = () =>
   request<AgentSessionVo[]>('/api/agent/sessions')
 
+/** 永久删除一个会话及其持久化历史。 */
+export const deleteAgentSession = (sessionId: string) =>
+  request<void>(sessionPath(sessionId), { method: 'DELETE' })
+
+/** 永久删除当前全部归档会话。 */
+export const clearArchivedAgentSessions = () =>
+  request<void>('/api/agent/sessions/archived', { method: 'DELETE' })
+
 export const getAgentSession = (sessionId: string) =>
   request<AgentSessionVo>(sessionPath(sessionId))
 
@@ -283,6 +299,26 @@ export const createAgentSession = (input: CreateAgentSessionInput) =>
 export const updateAgentSessionModel = (
   sessionId: string,
   input: UpdateAgentSessionModelInput,
+) =>
+  request<AgentSessionVo>(sessionPath(sessionId), {
+    body: JSON.stringify(input),
+    headers: { 'content-type': 'application/json' },
+    method: 'PATCH',
+  })
+
+export const updateAgentSessionArchived = (
+  sessionId: string,
+  input: UpdateAgentSessionArchiveInput,
+) =>
+  request<AgentSessionVo>(sessionPath(sessionId), {
+    body: JSON.stringify(input),
+    headers: { 'content-type': 'application/json' },
+    method: 'PATCH',
+  })
+
+export const renameAgentSession = (
+  sessionId: string,
+  input: RenameAgentSessionInput,
 ) =>
   request<AgentSessionVo>(sessionPath(sessionId), {
     body: JSON.stringify(input),

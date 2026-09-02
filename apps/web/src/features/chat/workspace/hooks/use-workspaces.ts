@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ChatWorkspace } from '../data/index.ts'
 import {
+  deleteWorkspace,
   listWorkspaces,
   selectWorkspace,
   type WorkspaceVo,
@@ -56,5 +57,28 @@ export function useWorkspaces() {
     }
   }, [])
 
-  return { addWorkspace, error, isLoading, refresh, workspaces }
+  /** 删除服务端工作区注册，并在成功后同步本地列表。 */
+  const removeWorkspace = useCallback(async (workspaceId: string) => {
+    setError('')
+    try {
+      await deleteWorkspace(workspaceId)
+      setWorkspaces((current) =>
+        current.filter((workspace) => workspace.id !== workspaceId),
+      )
+      return ''
+    } catch (requestError) {
+      const message = errorMessage(requestError)
+      setError(message)
+      return message
+    }
+  }, [])
+
+  return {
+    addWorkspace,
+    error,
+    isLoading,
+    refresh,
+    removeWorkspace,
+    workspaces,
+  }
 }

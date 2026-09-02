@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { Database, Display, Gear, Moon, Puzzle, Sun } from '@gravity-ui/icons'
+import {
+  Archive,
+  Database,
+  Display,
+  Gear,
+  Moon,
+  Puzzle,
+  Sun,
+} from '@gravity-ui/icons'
 import { Button, Modal, ToggleButton, ToggleButtonGroup } from '@heroui/react'
 import {
   PERMISSION_OPTIONS,
@@ -9,12 +17,19 @@ import {
 import type { PluginSettingsTab } from '../../providers/contexts/plugin-settings-context.ts'
 import { ModelsSettingsSection } from '../../models/components/ModelsSettingsSection.tsx'
 import { PluginsSettingsSection } from '../../plugins/components/PluginsSettingsSection.tsx'
+import type { ArchivedConversation } from '../types/settings-dialog.ts'
 import { SettingsSelect } from './SettingsSelect.tsx'
+import { ArchivedConversationsSection } from './ArchivedConversationsSection.tsx'
 
 interface SettingsDialogProps {
+  archivedConversations: readonly ArchivedConversation[]
   initialPluginTab?: PluginSettingsTab
   initialSection?: SettingsSection
   isOpen: boolean
+  onArchivedConversationDelete: (conversationId: string) => Promise<string>
+  onArchivedConversationRestore: (conversationId: string) => Promise<string>
+  onArchivedConversationsClear: () => Promise<string>
+  onArchivedConversationView: (conversationId: string) => void
   onOpenChange: (open: boolean) => void
 }
 
@@ -22,6 +37,7 @@ const SETTINGS_SECTIONS = [
   { id: 'general', label: '通用设置', icon: Gear },
   { id: 'models', label: '模型', icon: Database },
   { id: 'plugins', label: '插件', icon: Puzzle },
+  { id: 'archived', label: '已归档对话', icon: Archive },
 ] as const
 
 const APPEARANCE_OPTIONS = [
@@ -34,9 +50,14 @@ type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id']
 
 /** 展示应用级本地设置；当前选择只保留在页面会话中。 */
 export function SettingsDialog({
+  archivedConversations,
   initialPluginTab = 'skills',
   initialSection = 'general',
   isOpen,
+  onArchivedConversationDelete,
+  onArchivedConversationRestore,
+  onArchivedConversationsClear,
+  onArchivedConversationView,
   onOpenChange,
 }: SettingsDialogProps) {
   const [activeSection, setActiveSection] =
@@ -153,6 +174,16 @@ export function SettingsDialog({
                 <PluginsSettingsSection
                   activeTab={pluginTab}
                   onTabChange={setPluginTab}
+                />
+              </div>
+
+              <div hidden={activeSection !== 'archived'}>
+                <ArchivedConversationsSection
+                  conversations={archivedConversations}
+                  onClear={onArchivedConversationsClear}
+                  onDelete={onArchivedConversationDelete}
+                  onRestore={onArchivedConversationRestore}
+                  onView={onArchivedConversationView}
                 />
               </div>
             </div>

@@ -31,6 +31,9 @@ export function createApiRouter(
     '/agent/capabilities',
     createAgentCapabilityRouter(runtime, workspaces),
   )
-  router.route('/workspaces', createWorkspaceRouter(workspaces, dataDirectory))
+  router.route(
+    '/workspaces',
+    createWorkspaceRouter(workspaces, dataDirectory, runtime),
+  )
   return router
 }

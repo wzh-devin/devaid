@@ -1,14 +1,18 @@
 export {
   abortAgentSession,
   AgentSessionApiError,
+  clearArchivedAgentSessions,
   createAgentSession,
+  deleteAgentSession,
   getAgentSession,
   getPendingToolApproval,
   listAgentSessionMessages,
   listAgentSessions,
   parseAgentSseFrames,
   reconnectAgentRun,
+  renameAgentSession,
   streamAgentMessage,
   resolveToolApproval,
   updateAgentSessionModel,
+  updateAgentSessionArchived,
 } from './agent-session-api.ts'

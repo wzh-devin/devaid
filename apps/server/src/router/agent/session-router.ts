@@ -20,6 +20,7 @@ export function createAgentSessionRouter(
   const controller = createAgentSessionController(runtime, workspaces)
   router.post('/', sessionBodyLimit, controller.create)
   router.get('/', controller.list)
+  router.delete('/archived', controller.clearArchived)
   router.get('/:id/attachments/:entryId/:contentIndex', controller.attachment)
   router.get('/:id/messages', controller.messages)
   router.get('/:id', controller.get)

@@ -1,6 +1,7 @@
 export {
   WorkspaceApiError,
   createWorkspace,
+  deleteWorkspace,
   listWorkspaces,
   readWorkspaceFile,
   selectWorkspace,

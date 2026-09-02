@@ -10,15 +10,19 @@ import type {
 import type { ApprovalDecision } from '../../message/index.ts'
 import {
   abortAgentSession,
+  clearArchivedAgentSessions,
   createAgentSession,
+  deleteAgentSession,
   getAgentSession,
   getPendingToolApproval,
   listAgentSessionMessages,
   listAgentSessions,
   reconnectAgentRun,
+  renameAgentSession,
   resolveToolApproval,
   streamAgentMessage,
   updateAgentSessionModel,
+  updateAgentSessionArchived,
 } from '../api/index.ts'
 import { toChatMessages, toChatThread } from '../data/index.ts'
 import type { PendingToolApprovalVo } from '../types/index.ts'
@@ -30,6 +34,15 @@ const messageTitle = (message: string) =>
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : '会话请求失败，请重试。'
+
+/** 从会话键控状态中移除已永久删除的条目。 */
+const omitSessions = <T>(
+  values: Record<string, T>,
+  sessionIds: ReadonlySet<string>,
+) =>
+  Object.fromEntries(
+    Object.entries(values).filter(([sessionId]) => !sessionIds.has(sessionId)),
+  ) as Record<string, T>
 
 const toolOutputText = (output: unknown) => {
   if (typeof output === 'string') return output
@@ -247,6 +260,22 @@ export function useAgentSessions() {
     [],
   )
 
+  const forgetSessions = useCallback((ids: readonly string[]) => {
+    const sessionIds = new Set(ids)
+    if (sessionIds.size === 0) return
+    for (const sessionId of sessionIds) loadingRef.current.delete(sessionId)
+    statusRef.current = omitSessions(statusRef.current, sessionIds)
+    setThreads((current) =>
+      current.filter((thread) => !sessionIds.has(thread.id)),
+    )
+    setStatuses(statusRef.current)
+    setErrors((current) => omitSessions(current, sessionIds))
+    setPendingApprovals((current) => omitSessions(current, sessionIds))
+    setLoadingIds(
+      (current) => new Set([...current].filter((id) => !sessionIds.has(id))),
+    )
+  }, [])
+
   const loadMessages = useCallback(
     async (sessionId: string) => {
       const messages = []
@@ -446,6 +475,75 @@ export function useAgentSessions() {
     },
     [updateThread],
   )
+
+  const renameSession = useCallback(
+    async (sessionId: string, name: string) => {
+      setErrors((current) => ({ ...current, [sessionId]: '' }))
+      try {
+        const session = await renameAgentSession(sessionId, { name })
+        updateThread(sessionId, (thread) => ({
+          ...thread,
+          title: session.name ?? '新对话',
+        }))
+        return ''
+      } catch (error) {
+        const message = errorMessage(error)
+        setErrors((current) => ({ ...current, [sessionId]: message }))
+        return message
+      }
+    },
+    [updateThread],
+  )
+
+  const setSessionArchived = useCallback(
+    async (sessionId: string, archived: boolean) => {
+      setErrors((current) => ({ ...current, [sessionId]: '' }))
+      try {
+        const session = await updateAgentSessionArchived(sessionId, {
+          archived,
+        })
+        updateThread(sessionId, (thread) => ({
+          ...thread,
+          archived: session.archived,
+        }))
+        return ''
+      } catch (error) {
+        const message = errorMessage(error)
+        setErrors((current) => ({ ...current, [sessionId]: message }))
+        return message
+      }
+    },
+    [updateThread],
+  )
+
+  /** 永久删除单个会话并清理对应的页面运行状态。 */
+  const deleteSessionPermanently = useCallback(
+    async (sessionId: string) => {
+      try {
+        await deleteAgentSession(sessionId)
+        forgetSessions([sessionId])
+        return ''
+      } catch (error) {
+        return errorMessage(error)
+      }
+    },
+    [forgetSessions],
+  )
+
+  /** 清空当前归档会话；失败时重新读取服务端权威列表。 */
+  const clearArchivedSessions = useCallback(async () => {
+    const archivedIds = threads
+      .filter((thread) => thread.archived)
+      .map((thread) => thread.id)
+    try {
+      await clearArchivedAgentSessions()
+      forgetSessions(archivedIds)
+      return ''
+    } catch (error) {
+      await refreshSessions()
+      return errorMessage(error)
+    }
+  }, [forgetSessions, refreshSessions, threads])
 
   const sendMessage = useCallback(
     async (sessionId: string, payload: ChatSubmitPayload) => {
@@ -722,17 +820,22 @@ export function useAgentSessions() {
 
   return {
     abort,
+    clearArchivedSessions,
     createSession,
+    deleteSessionPermanently,
     errors,
     globalError,
+    forgetSessions,
     isCreating,
     loadingIds,
     loadThread,
     pendingApprovals,
     refreshSessions,
+    renameSession,
     resolveApproval,
     sendMessage,
     statuses,
+    setSessionArchived,
     threads,
     updateModel,
   }

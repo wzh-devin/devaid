@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChatConversation } from '@agile-avocation/ui-pro/chat-conversation'
 import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
-import { Tabs } from '@heroui/react'
+import { Button, Tabs } from '@heroui/react'
 import {
   type ApprovalDecision,
   ApprovalPrompt,
@@ -24,6 +24,7 @@ interface ChatPageProps {
   onModelChange: (
     selection: Pick<ChatSubmitPayload, 'modelId' | 'providerId'>,
   ) => Promise<boolean>
+  onRestore: () => Promise<string>
   onSubmit: (payload: ChatSubmitPayload) => boolean
 }
 
@@ -35,11 +36,13 @@ export function ChatPage({
   onApprovalResolve,
   onStop,
   onSubmit,
+  onRestore,
   pendingApproval,
   status,
   thread,
 }: ChatPageProps) {
   const [draft, setDraft] = useState('')
+  const [isRestoring, setIsRestoring] = useState(false)
   const initialModelKey = thread.providerId
     ? `${thread.providerId}:${thread.modelId}`
     : undefined
@@ -95,7 +98,10 @@ export function ChatPage({
                     正在加载会话…
                   </p>
                 ) : null}
-                {!isLoading && thread.messages.length === 0 && !error ? (
+                {!isLoading &&
+                !thread.archived &&
+                thread.messages.length === 0 &&
+                !error ? (
                   <p className="text-sm text-muted">发送消息开始这段会话。</p>
                 ) : null}
                 {thread.messages.map((message, index) => {
@@ -129,7 +135,34 @@ export function ChatPage({
 
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
-          {pendingTool ? (
+          {thread.archived ? (
+            <div className="border-t border-divider py-2">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    这是已归档对话
+                  </p>
+                  <p className="text-xs text-muted">恢复后才能继续发送消息。</p>
+                </div>
+                <Button
+                  isDisabled={isRestoring}
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => {
+                    setIsRestoring(true)
+                    void onRestore().finally(() => setIsRestoring(false))
+                  }}
+                >
+                  {isRestoring ? '恢复中…' : '恢复对话'}
+                </Button>
+              </div>
+              {error ? (
+                <p aria-live="polite" className="mt-2 text-xs text-danger">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          ) : pendingTool ? (
             <ApprovalPrompt
               tool={pendingTool}
               onResolve={(decision) => void onApprovalResolve(decision)}

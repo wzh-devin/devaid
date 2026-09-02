@@ -52,6 +52,7 @@ export type AgentSessionRepository = SessionRepo<
 >
 
 export interface AgentSessionInfo {
+  archived: boolean
   createdAt: number
   cwd: string
   id: string
@@ -107,6 +108,7 @@ export interface AgentSessionMessagePage {
 }
 
 export interface OpenAgentSession {
+  archived: boolean
   config: AgentSessionModelConfig
   entries: Entry[]
   metadata: AgentSessionMetadata
@@ -115,6 +117,7 @@ export interface OpenAgentSession {
 
 const sessionIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const archiveEntryType = 'devaid_session_archived'
 
 function readHeaderConfig(
   metadata: AgentSessionMetadata,
@@ -156,8 +159,10 @@ function toInfo(
   metadata: AgentSessionMetadata,
   config: AgentSessionModelConfig,
   name: string | undefined,
+  archived = false,
 ): AgentSessionInfo {
   return {
+    archived,
     createdAt: metadata.createdAt,
     cwd: metadata.cwd,
     id: metadata.id,
@@ -165,6 +170,21 @@ function toInfo(
     name: name ?? null,
     providerId: config.providerId,
   }
+}
+
+function archiveState(entry: Entry | undefined) {
+  if (entry === undefined) return false
+  if (
+    entry.type !== 'custom' ||
+    entry.customType !== archiveEntryType ||
+    !entry.data ||
+    typeof entry.data !== 'object' ||
+    Array.isArray(entry.data) ||
+    typeof (entry.data as Record<string, unknown>).archived !== 'boolean'
+  ) {
+    throw new Error('Session archive entry is invalid')
+  }
+  return (entry.data as { archived: boolean }).archived
 }
 
 function messageText(message: AssistantMessage | UserMessage) {
@@ -334,6 +354,7 @@ export class AgentSessionService {
   private readonly repository: AgentSessionRepository
   private listCache?: AgentSessionInfo[]
   private metadataIndex?: Promise<Map<string, AgentSessionMetadata>>
+  private repositoryTail = Promise.resolve()
 
   constructor(
     repository: AgentSessionRepository,
@@ -356,10 +377,12 @@ export class AgentSessionService {
         providerId: input.providerId,
         schemaVersion: 1,
       }
-      session = await this.repository.create({
-        cwd: input.cwd,
-        metadata: { ...config },
-      })
+      session = await this.serializeRepository(() =>
+        this.repository.create({
+          cwd: input.cwd,
+          metadata: { ...config },
+        }),
+      )
       if (input.name !== undefined) await session.setName(input.name)
       const metadata = await session.getMetadata()
       if (this.metadataIndex) {
@@ -373,7 +396,9 @@ export class AgentSessionService {
       if (session) {
         const metadata = await session.getMetadata().catch(() => undefined)
         if (metadata)
-          await this.repository.delete(metadata).catch(() => undefined)
+          await this.serializeRepository(() =>
+            this.repository.delete(metadata),
+          ).catch(() => undefined)
       }
       return sessionFailure(error)
     }
@@ -394,16 +419,29 @@ export class AgentSessionService {
     }
   }
 
+  async listFromSource() {
+    try {
+      return await this.listFromRepository(false)
+    } catch (error) {
+      return sessionFailure(error)
+    }
+  }
+
   private async listFromRepository(cache: boolean) {
     if (cache && this.listCache) return this.listCache
     const sessions: AgentSessionInfo[] = []
     for (const metadata of (await this.getMetadataIndex()).values()) {
       const session = await this.repository.open(metadata)
-      const [name, modelChange] = await Promise.all([
+      const [name, modelChange, archiveEntry] = await Promise.all([
         session.getName(),
         session.findEntryOnBranch({
           order: 'newestFirst',
           type: 'model_change',
+        }),
+        session.findEntryOnBranch({
+          customType: archiveEntryType,
+          order: 'newestFirst',
+          type: 'custom',
         }),
       ])
       sessions.push(
@@ -411,6 +449,7 @@ export class AgentSessionService {
           metadata,
           configFromModelChange(modelChange, readHeaderConfig(metadata)),
           name,
+          archiveState(archiveEntry),
         ),
       )
     }
@@ -430,7 +469,7 @@ export class AgentSessionService {
   }
 
   private projectDeleted(id: string) {
-    void this.projection?.deleted(id).catch(() => {
+    return this.projection?.deleted(id).catch(() => {
       // 启动对账会从 JSONL 缺失事实中补偿删除。
     })
   }
@@ -443,7 +482,7 @@ export class AgentSessionService {
         opened.session.getStats(),
       ])
       return {
-        ...toInfo(opened.metadata, opened.config, name),
+        ...toInfo(opened.metadata, opened.config, name, opened.archived),
         stats,
       }
     } catch (error) {
@@ -455,7 +494,7 @@ export class AgentSessionService {
     const opened = await this.openSession(id)
     try {
       await opened.session.setName(name)
-      const info = toInfo(opened.metadata, opened.config, name)
+      const info = toInfo(opened.metadata, opened.config, name, opened.archived)
       this.updateListCache(info)
       await this.projectChanged(id)
       return info
@@ -469,6 +508,13 @@ export class AgentSessionService {
     input: { modelId: string; providerId: string },
   ) {
     const opened = await this.openSession(id)
+    if (opened.archived) {
+      throw new AgentRuntimeError(
+        'SESSION_ARCHIVED',
+        '已归档的会话需要恢复后才能继续。',
+        409,
+      )
+    }
     const config: AgentSessionModelConfig = { ...input, schemaVersion: 1 }
     try {
       await opened.session.appendEntry(
@@ -484,6 +530,25 @@ export class AgentSessionService {
         opened.metadata,
         config,
         await opened.session.getName(),
+        false,
+      )
+      this.updateListCache(info)
+      await this.projectChanged(id)
+      return info
+    } catch (error) {
+      return sessionFailure(error)
+    }
+  }
+
+  async archive(id: string, archived: boolean) {
+    const opened = await this.openSession(id)
+    try {
+      await opened.session.appendCustomEntry(archiveEntryType, { archived })
+      const info = toInfo(
+        opened.metadata,
+        opened.config,
+        await opened.session.getName(),
+        archived,
       )
       this.updateListCache(info)
       await this.projectChanged(id)
@@ -600,7 +665,7 @@ export class AgentSessionService {
   async delete(id: string) {
     try {
       const metadata = await this.findMetadata(id)
-      await this.repository.delete(metadata)
+      await this.serializeRepository(() => this.repository.delete(metadata))
       if (this.metadataIndex) (await this.metadataIndex).delete(metadata.id)
       if (this.listCache) {
         this.listCache = this.listCache.filter((session) => session.id !== id)
@@ -615,11 +680,19 @@ export class AgentSessionService {
     try {
       const metadata = await this.findMetadata(id)
       const session = await this.repository.open(metadata)
-      const modelChange = await session.findEntryOnBranch({
-        order: 'newestFirst',
-        type: 'model_change',
-      })
+      const [modelChange, archiveEntry] = await Promise.all([
+        session.findEntryOnBranch({
+          order: 'newestFirst',
+          type: 'model_change',
+        }),
+        session.findEntryOnBranch({
+          customType: archiveEntryType,
+          order: 'newestFirst',
+          type: 'custom',
+        }),
+      ])
       return {
+        archived: archiveState(archiveEntry),
         config: configFromModelChange(modelChange, readHeaderConfig(metadata)),
         metadata,
         session,
@@ -664,11 +737,9 @@ export class AgentSessionService {
 
   private async refreshMetadataIndex() {
     // ponytail: 单进程缓存适合本地 Server；多进程写入时改为仓储版本号或变更通知。
-    const loading = this.repository
-      .list()
-      .then(
-        (sessions) => new Map(sessions.map((session) => [session.id, session])),
-      )
+    const loading = this.serializeRepository(() => this.repository.list()).then(
+      (sessions) => new Map(sessions.map((session) => [session.id, session])),
+    )
     this.metadataIndex = loading
     this.listCache = undefined
     try {
@@ -677,5 +748,15 @@ export class AgentSessionService {
       if (this.metadataIndex === loading) this.metadataIndex = undefined
       throw error
     }
+  }
+
+  private serializeRepository<T>(operation: () => Promise<T>) {
+    // ponytail: Pi 的目录枚举会逐项 lstat；单进程串行化创建/删除/扫描可避免文件在枚举中途消失。
+    const result = this.repositoryTail.then(operation)
+    this.repositoryTail = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
   }
 }

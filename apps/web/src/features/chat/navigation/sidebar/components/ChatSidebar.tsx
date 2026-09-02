@@ -1,15 +1,22 @@
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sidebar } from '@agile-avocation/ui-pro/sidebar'
 import { Sheet } from '@agile-avocation/ui-pro/sheet'
 import type { ChatSidebarProps } from '../types/chat-sidebar.ts'
+import { clampSidebarWidth } from '../utils/sidebar-width.ts'
 import { SidebarContents } from './SidebarContents.tsx'
+import { SidebarResizeHandle } from './SidebarResizeHandle.tsx'
+
+const DEFAULT_SIDEBAR_WIDTH = 240
 
 /** 渲染品牌、聊天导航和设置入口，桌面与移动侧栏共享内容。 */
 export function ChatSidebar({
   activePage,
   isWorkspaceLoading,
+  onThreadArchive,
+  onThreadRename,
   onWorkspaceAdd,
+  onWorkspaceDelete,
   onWorkspaceSelect,
   onSearch,
   onSettings,
@@ -18,6 +25,8 @@ export function ChatSidebar({
   workspaces,
   workspaceError: externalWorkspaceError,
 }: ChatSidebarProps) {
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const [isResizing, setIsResizing] = useState(false)
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState(
     () => new Set<string>(),
   )
@@ -61,7 +70,10 @@ export function ChatSidebar({
     onAddWorkspace: handleAddWorkspace,
     onSearch,
     onSettings,
+    onThreadArchive,
+    onThreadRename,
     onWorkspaceSelect,
+    onWorkspaceDelete,
     onWorkspaceToggle: handleWorkspaceToggle,
     selectedWorkspaceId,
     threads,
@@ -69,14 +81,31 @@ export function ChatSidebar({
     workspaces,
   }
 
+  useEffect(() => {
+    const handleResize = () =>
+      setSidebarWidth((width) => clampSidebarWidth(width, window.innerWidth))
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <>
       <Sidebar
         className="bg-surface-secondary"
-        style={{ '--sidebar-width-collapsed': '56px' } as CSSProperties}
+        style={
+          {
+            '--sidebar-duration': isResizing ? '0s' : '0.2s',
+            '--sidebar-width': `${sidebarWidth}px`,
+            '--sidebar-width-collapsed': '56px',
+          } as CSSProperties
+        }
       >
         <SidebarContents {...contentProps} />
-        <Sidebar.Rail aria-label="切换侧边栏" />
+        <SidebarResizeHandle
+          value={sidebarWidth}
+          onChange={setSidebarWidth}
+          onResizingChange={setIsResizing}
+        />
       </Sidebar>
       <Sidebar.Mobile>
         <Sheet.Heading className="sr-only">导航</Sheet.Heading>

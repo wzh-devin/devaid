@@ -182,6 +182,36 @@ export class WorkspaceStore {
   }
 
   async requireAvailable(id: string) {
+    return this.available(id)
+  }
+
+  async withAvailable<T>(
+    id: string,
+    operation: (workspace: WorkspaceState) => Promise<T>,
+  ) {
+    // ponytail: 全局锁适合本地单 Server；创建吞吐成为瓶颈时再升级为按工作区锁。
+    return this.serialize(async () => operation(await this.available(id)))
+  }
+
+  async delete(
+    id: string,
+    beforeDelete: (workspace: WorkspaceRecord) => Promise<void>,
+  ) {
+    return this.serialize(async () => {
+      const document = await this.readDocument()
+      const workspace = document.workspaces.find((item) => item.id === id)
+      if (!workspace) {
+        throw new WorkspaceError('WORKSPACE_NOT_FOUND', '工作区不存在。', 404)
+      }
+      await beforeDelete(workspace)
+      await this.writeDocument({
+        version: 1,
+        workspaces: document.workspaces.filter((item) => item.id !== id),
+      })
+    })
+  }
+
+  private async available(id: string) {
     const workspace = (await this.readDocument()).workspaces.find(
       (item) => item.id === id,
     )

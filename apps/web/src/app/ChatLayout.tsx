@@ -22,10 +22,16 @@ interface ChatLayoutProps {
   activePage: ChatActivePage
   children: ReactNode
   isWorkspaceLoading: boolean
+  onArchivedConversationDelete: (threadId: string) => Promise<string>
+  onArchivedConversationsClear: () => Promise<string>
   onNavigate: (path: string, draft?: string) => void
+  onThreadArchive: (threadId: string, archived: boolean) => Promise<string>
+  onThreadRename: (threadId: string, name: string) => Promise<string>
   onWorkspaceAdd: () => Promise<ChatWorkspace | null>
+  onWorkspaceDelete: (workspaceId: string) => Promise<string>
   onWorkspaceSelect: (workspaceId: string) => void
   selectedWorkspaceId: string
+  archivedThreads: readonly ChatThread[]
   threads: readonly ChatThread[]
   workspaces: readonly ChatWorkspace[]
   workspaceError: string
@@ -34,10 +40,16 @@ interface ChatLayoutProps {
 /** 组合聊天应用外壳，并统一管理搜索弹窗与全局快捷键。 */
 export function ChatLayout({
   activePage,
+  archivedThreads,
   children,
   isWorkspaceLoading,
+  onArchivedConversationDelete,
+  onArchivedConversationsClear,
   onNavigate,
+  onThreadArchive,
+  onThreadRename,
   onWorkspaceAdd,
+  onWorkspaceDelete,
   onWorkspaceSelect,
   selectedWorkspaceId,
   threads,
@@ -53,7 +65,7 @@ export function ChatLayout({
   }>()
   const [settingsTarget, setSettingsTarget] = useState<{
     pluginTab: PluginSettingsTab
-    section: 'general' | 'plugins'
+    section: 'archived' | 'general' | 'plugins'
   }>({ pluginTab: 'skills', section: 'general' })
   const isThreadPage = activePage.kind === 'thread'
   const activePageId = isThreadPage ? activePage.thread.id : activePage.kind
@@ -157,6 +169,8 @@ export function ChatLayout({
               workspaces={workspaces}
               workspaceError={workspaceError}
               onSearch={() => setIsSearchOpen(true)}
+              onThreadArchive={(threadId) => onThreadArchive(threadId, true)}
+              onThreadRename={onThreadRename}
               onSettings={() => {
                 setSettingsTarget((currentTarget) => ({
                   ...currentTarget,
@@ -165,6 +179,7 @@ export function ChatLayout({
                 setIsSettingsOpen(true)
               }}
               onWorkspaceAdd={onWorkspaceAdd}
+              onWorkspaceDelete={onWorkspaceDelete}
               onWorkspaceSelect={onWorkspaceSelect}
               threads={threads}
             />
@@ -178,10 +193,28 @@ export function ChatLayout({
             onSelect={handleThreadSelect}
           />
           <SettingsDialog
+            archivedConversations={archivedThreads.map((thread) => ({
+              id: thread.id,
+              title: thread.title,
+              updatedAt: thread.updatedAt,
+              workspaceLabel:
+                workspaces.find(
+                  (workspace) => workspace.id === thread.workspaceId,
+                )?.label ?? '未知工作区',
+            }))}
             key={`${settingsTarget.section}-${settingsTarget.pluginTab}-${isSettingsOpen ? 'open' : 'closed'}`}
             initialPluginTab={settingsTarget.pluginTab}
             initialSection={settingsTarget.section}
             isOpen={isSettingsOpen}
+            onArchivedConversationDelete={onArchivedConversationDelete}
+            onArchivedConversationRestore={(threadId) =>
+              onThreadArchive(threadId, false)
+            }
+            onArchivedConversationsClear={onArchivedConversationsClear}
+            onArchivedConversationView={(threadId) => {
+              setIsSettingsOpen(false)
+              onNavigate(`/${threadId}`)
+            }}
             onOpenChange={setIsSettingsOpen}
           />
         </AppLayout>

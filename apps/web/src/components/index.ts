@@ -19,5 +19,6 @@ export {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  DestructiveActionDialog,
   SelectMenu,
 } from './ui/index.ts'

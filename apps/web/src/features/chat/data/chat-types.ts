@@ -121,6 +121,7 @@ export interface ChatMessage {
 }
 
 export interface ChatThread {
+  archived: boolean
   id: string
   messages: readonly ChatMessage[]
   modelId: string

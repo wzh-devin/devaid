@@ -1,4 +1,5 @@
 import { WorkspaceExecutionEnv } from '@devaid/agent-tools'
+import { AgentRuntimeError, type AgentRuntime } from '@devaid/agent-runtime'
 import type { Context } from 'hono'
 
 import type {
@@ -35,7 +36,7 @@ const toDto = (workspace: WorkspaceState): WorkspaceDto => ({
 })
 
 function workspaceErrorResponse(context: Context, error: unknown) {
-  if (error instanceof WorkspaceError) {
+  if (error instanceof WorkspaceError || error instanceof AgentRuntimeError) {
     return context.json(
       { code: error.code, message: error.message },
       error.status,
@@ -76,6 +77,7 @@ function fileErrorResponse(context: Context, code: string) {
 export function createWorkspaceController(
   workspaces: WorkspaceStore,
   dataDirectory: string,
+  runtime: AgentRuntime,
 ) {
   return {
     create: async (context: Context) => {
@@ -97,6 +99,23 @@ export function createWorkspaceController(
     list: async (context: Context) => {
       try {
         return context.json((await workspaces.list()).map(toDto))
+      } catch (error) {
+        return workspaceErrorResponse(context, error)
+      }
+    },
+    delete: async (context: Context) => {
+      const workspaceId = context.req.param('workspaceId')?.trim()
+      if (!workspaceId || workspaceId.length > 200) {
+        return context.json(
+          { code: 'INVALID_WORKSPACE_REQUEST', message: '工作区请求无效。' },
+          400,
+        )
+      }
+      try {
+        await workspaces.delete(workspaceId, async (workspace) => {
+          await runtime.deleteSessionsByCwd(workspace.path)
+        })
+        return context.body(null, 204)
       } catch (error) {
         return workspaceErrorResponse(context, error)
       }

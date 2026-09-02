@@ -32,23 +32,38 @@ export function App() {
   const route = useMemo(() => resolveChatRoute(pathname), [pathname])
   const {
     abort,
+    clearArchivedSessions,
     createSession,
+    deleteSessionPermanently,
     errors,
     globalError,
+    forgetSessions,
     isCreating,
     loadingIds,
     loadThread,
     pendingApprovals,
+    refreshSessions,
+    renameSession,
     resolveApproval,
     sendMessage,
     statuses,
+    setSessionArchived,
     threads,
     updateModel,
   } = useAgentSessions()
+  const activeThreads = useMemo(
+    () => threads.filter((thread) => !thread.archived),
+    [threads],
+  )
+  const archivedThreads = useMemo(
+    () => threads.filter((thread) => thread.archived),
+    [threads],
+  )
   const {
     addWorkspace,
     error: workspaceError,
     isLoading: isWorkspaceLoading,
+    removeWorkspace,
     workspaces,
   } = useWorkspaces()
   const selectedThread =
@@ -70,11 +85,11 @@ export function App() {
     () =>
       workspaces.map((workspace) => ({
         ...workspace,
-        threadIds: threads
+        threadIds: activeThreads
           .filter((thread) => thread.workspaceId === workspace.id)
           .map((thread) => thread.id),
       })),
-    [threads, workspaces],
+    [activeThreads, workspaces],
   )
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('')
 
@@ -165,6 +180,49 @@ export function App() {
     [sendMessage],
   )
 
+  /** 永久删除归档会话，当前页命中时回到新建页。 */
+  const handleArchivedDelete = useCallback(
+    async (threadId: string) => {
+      const error = await deleteSessionPermanently(threadId)
+      if (!error && selectedThread?.id === threadId) commitNavigation('/new')
+      return error
+    },
+    [commitNavigation, deleteSessionPermanently, selectedThread?.id],
+  )
+
+  /** 清空归档会话，并避免继续停留在可能已删除的会话路由。 */
+  const handleArchivedClear = useCallback(async () => {
+    const shouldNavigate = selectedThread?.archived === true
+    const error = await clearArchivedSessions()
+    if (shouldNavigate) commitNavigation('/new')
+    return error
+  }, [clearArchivedSessions, commitNavigation, selectedThread?.archived])
+
+  /** 删除工作区后清理所属会话；部分失败时重新校准服务端状态。 */
+  const handleWorkspaceDelete = useCallback(
+    async (workspaceId: string) => {
+      const sessionIds = threads
+        .filter((thread) => thread.workspaceId === workspaceId)
+        .map((thread) => thread.id)
+      const error = await removeWorkspace(workspaceId)
+      if (error) {
+        await refreshSessions()
+        return error
+      }
+      forgetSessions(sessionIds)
+      if (selectedThread?.workspaceId === workspaceId) commitNavigation('/new')
+      return ''
+    },
+    [
+      commitNavigation,
+      forgetSessions,
+      refreshSessions,
+      removeWorkspace,
+      selectedThread?.workspaceId,
+      threads,
+    ],
+  )
+
   const page = (() => {
     switch (activePage.kind) {
       case 'explore':
@@ -180,6 +238,7 @@ export function App() {
             pendingApproval={pendingApprovals[activePage.thread.id]}
             status={statuses[activePage.thread.id] ?? 'ready'}
             thread={activePage.thread}
+            onRestore={() => setSessionArchived(activePage.thread.id, false)}
             onModelChange={(selection) =>
               updateModel(activePage.thread.id, selection)
             }
@@ -208,13 +267,19 @@ export function App() {
   return (
     <ChatLayout
       activePage={activePage}
+      archivedThreads={archivedThreads}
       isWorkspaceLoading={isWorkspaceLoading}
       selectedWorkspaceId={selectedWorkspaceId}
-      threads={threads}
+      threads={activeThreads}
       workspaces={visibleWorkspaces}
       onNavigate={navigate}
+      onArchivedConversationDelete={handleArchivedDelete}
+      onArchivedConversationsClear={handleArchivedClear}
+      onThreadArchive={setSessionArchived}
+      onThreadRename={renameSession}
       workspaceError={workspaceError}
       onWorkspaceAdd={addWorkspace}
+      onWorkspaceDelete={handleWorkspaceDelete}
       onWorkspaceSelect={setSelectedWorkspaceId}
     >
       {page}

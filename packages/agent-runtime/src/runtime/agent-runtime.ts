@@ -51,6 +51,7 @@ import type {
 } from '../execution/run-input.ts'
 import {
   AgentSessionService,
+  type AgentSessionInfo,
   type AgentSessionProjection,
   type AgentSessionRepository,
 } from '../session/session-service.ts'
@@ -274,6 +275,16 @@ export class AgentRuntime {
     }
   }
 
+  async archiveSession(id: string, archived: boolean) {
+    this.assertOpen()
+    const operation = this.reserve(id, 'mutation')
+    try {
+      return await this.sessions.archive(id, archived)
+    } finally {
+      this.release(id, operation)
+    }
+  }
+
   async updateSessionModel(
     id: string,
     input: { modelId: string; providerId: string },
@@ -327,6 +338,16 @@ export class AgentRuntime {
     } finally {
       this.release(id, operation)
     }
+  }
+
+  async deleteArchivedSessions() {
+    this.assertOpen()
+    return this.deleteSessionsWhere((session) => session.archived)
+  }
+
+  async deleteSessionsByCwd(cwd: string) {
+    this.assertOpen()
+    return this.deleteSessionsWhere((session) => session.cwd === cwd)
   }
 
   prompt(
@@ -422,6 +443,13 @@ export class AgentRuntime {
     const operation = this.reserve(id, 'run')
     try {
       const opened = await this.sessions.open(id)
+      if (opened.archived) {
+        throw new AgentRuntimeError(
+          'SESSION_ARCHIVED',
+          '已归档的会话需要恢复后才能继续。',
+          409,
+        )
+      }
       operation.controller.signal.throwIfAborted()
       const model = await this.models.resolveModel(
         opened.config.providerId,
@@ -943,6 +971,22 @@ export class AgentRuntime {
   private release(id: string, operation: ActiveOperation) {
     if (this.active.get(id) === operation) this.active.delete(id)
     operation.finish()
+  }
+
+  private async deleteSessionsWhere(
+    predicate: (session: AgentSessionInfo) => boolean,
+  ) {
+    const sessions = (await this.sessions.listFromSource()).filter(predicate)
+    const operations = new Map<string, ActiveOperation>()
+    try {
+      for (const session of sessions) {
+        operations.set(session.id, this.reserve(session.id, 'mutation'))
+      }
+      for (const session of sessions) await this.sessions.delete(session.id)
+      return sessions.length
+    } finally {
+      for (const [id, operation] of operations) this.release(id, operation)
+    }
   }
 
   private assertOpen() {

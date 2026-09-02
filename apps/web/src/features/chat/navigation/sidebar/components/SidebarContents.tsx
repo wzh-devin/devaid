@@ -1,7 +1,19 @@
+import { useState } from 'react'
 import { Sidebar, useSidebar } from '@agile-avocation/ui-pro/sidebar'
-import { Folder, FolderPlus, Gear, Magnifier } from '@gravity-ui/icons'
-import { Button, Tooltip } from '@heroui/react'
+import {
+  Archive,
+  Ellipsis,
+  Folder,
+  FolderPlus,
+  Gear,
+  Magnifier,
+  Pencil,
+  TrashBin,
+} from '@gravity-ui/icons'
+import { Button, Dropdown, Tooltip } from '@heroui/react'
+import { DestructiveActionDialog } from '../../../../../components/index.ts'
 import { CHAT_NAV_ITEMS } from '../../../data/chat-navigation.ts'
+import type { ChatThread } from '../../../data/chat-types.ts'
 import type { ChatSidebarProps } from '../types/chat-sidebar.ts'
 
 interface SidebarContentsProps extends Omit<
@@ -16,6 +28,130 @@ interface SidebarContentsProps extends Omit<
   workspaceError: string
 }
 
+interface ConversationItemProps {
+  idPrefix: string
+  isCurrent: boolean
+  onArchive: (threadId: string) => Promise<string>
+  onError: (message: string) => void
+  onRename: (threadId: string, name: string) => Promise<string>
+  thread: ChatThread
+}
+
+function ConversationItem({
+  idPrefix,
+  isCurrent,
+  onArchive,
+  onError,
+  onRename,
+  thread,
+}: ConversationItemProps) {
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [name, setName] = useState(thread.title)
+
+  const saveName = async () => {
+    const nextName = name.trim()
+    if (!nextName) {
+      onError('对话名称不能为空。')
+      return
+    }
+    const error = await onRename(thread.id, nextName)
+    if (error) onError(error)
+    else setIsRenaming(false)
+  }
+
+  const archive = async () => {
+    setIsArchiving(true)
+    const error = await onArchive(thread.id)
+    if (error) {
+      onError(error)
+      setIsArchiving(false)
+    }
+  }
+
+  return (
+    <Sidebar.MenuItem
+      className="focus-within:[&_.sidebar__menu-actions]:flex"
+      href={isRenaming ? undefined : `/${thread.id}`}
+      id={`${idPrefix}${thread.id}`}
+      isCurrent={isCurrent}
+      textValue={thread.title}
+    >
+      <Sidebar.MenuLabel className="min-w-0">
+        {isRenaming ? (
+          <input
+            autoFocus
+            aria-label="对话名称"
+            className="h-7 w-full rounded-md border border-accent bg-background px-2 text-sm text-foreground outline-none"
+            maxLength={200}
+            value={name}
+            onBlur={() => {
+              setName(thread.title)
+              setIsRenaming(false)
+            }}
+            onChange={(event) => setName(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onFocus={(event) => event.currentTarget.select()}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void saveName()
+              } else if (event.key === 'Escape') {
+                setName(thread.title)
+                setIsRenaming(false)
+              }
+            }}
+          />
+        ) : (
+          <span className="flex min-w-0 items-center justify-between gap-2">
+            <span className="truncate">{thread.title}</span>
+            <span className="shrink-0 text-xs text-muted">
+              {thread.updatedAt}
+            </span>
+          </span>
+        )}
+      </Sidebar.MenuLabel>
+      {!isRenaming ? (
+        <Sidebar.MenuActions>
+          <Dropdown>
+            <Dropdown.Trigger
+              aria-label={`管理对话：${thread.title}`}
+              className="sidebar__menu-action"
+              isDisabled={isArchiving}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Ellipsis className="size-4" />
+            </Dropdown.Trigger>
+            <Dropdown.Popover className="min-w-40" placement="bottom end">
+              <Dropdown.Menu
+                aria-label="对话操作"
+                onAction={(key) => {
+                  if (key === 'rename') {
+                    setName(thread.title)
+                    setIsRenaming(true)
+                  } else if (key === 'archive') {
+                    void archive()
+                  }
+                }}
+              >
+                <Dropdown.Item id="rename" textValue="重命名">
+                  <Pencil className="size-4" />
+                  重命名
+                </Dropdown.Item>
+                <Dropdown.Item id="archive" textValue="归档">
+                  <Archive className="size-4" />
+                  归档
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+        </Sidebar.MenuActions>
+      ) : null}
+    </Sidebar.MenuItem>
+  )
+}
+
 /** 复用桌面与移动导航内容，并标记当前页面或会话。 */
 export function SidebarContents({
   activePage,
@@ -25,13 +161,20 @@ export function SidebarContents({
   onAddWorkspace,
   onSearch,
   onSettings,
-  onWorkspaceSelect,
+  onThreadArchive,
+  onThreadRename,
   onWorkspaceToggle,
+  onWorkspaceDelete,
   selectedWorkspaceId,
   threads,
   workspaceError,
   workspaces,
 }: SidebarContentsProps) {
+  const [sessionError, setSessionError] = useState('')
+  const [workspaceToDelete, setWorkspaceToDelete] =
+    useState<ChatSidebarProps['workspaces'][number]>()
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false)
+  const [workspaceDeleteError, setWorkspaceDeleteError] = useState('')
   const { isMobile, isOpen, setMobileOpen } = useSidebar()
   const isCollapsed = !isMobile && !isOpen
   const visibleNavItems = isCollapsed
@@ -40,6 +183,17 @@ export function SidebarContents({
   const handleSettings = () => {
     if (isMobile) setMobileOpen(false)
     onSettings()
+  }
+
+  /** 删除工作区及会话，并保留失败信息供用户重试。 */
+  const deleteWorkspace = async () => {
+    if (!workspaceToDelete) return
+    setIsDeletingWorkspace(true)
+    setWorkspaceDeleteError('')
+    const error = await onWorkspaceDelete(workspaceToDelete.id)
+    setWorkspaceDeleteError(error)
+    setIsDeletingWorkspace(false)
+    if (!error) setWorkspaceToDelete(undefined)
   }
 
   return (
@@ -153,24 +307,58 @@ export function SidebarContents({
 
                   return (
                     <section key={workspace.id}>
-                      <Button
-                        fullWidth
-                        aria-expanded={isExpanded}
-                        className="h-9 min-h-9 justify-start gap-4 rounded-2xl pr-2 pl-3 font-normal"
-                        size="sm"
-                        variant="ghost"
-                        onPress={() => onWorkspaceToggle(workspace.id)}
-                      >
-                        <Folder
-                          className={`size-4 shrink-0 ${isSelected ? 'text-accent' : 'text-muted'}`}
-                        />
-                        <span className="truncate">{workspace.label}</span>
-                        {!workspace.available ? (
-                          <span className="ml-auto shrink-0 text-xs text-danger">
-                            不可用
-                          </span>
-                        ) : null}
-                      </Button>
+                      <div className="group/workspace flex items-center">
+                        <Button
+                          fullWidth
+                          aria-expanded={isExpanded}
+                          className="h-9 min-h-9 min-w-0 justify-start gap-4 rounded-2xl pr-10 pl-3 font-normal"
+                          size="sm"
+                          variant="ghost"
+                          onPress={() => onWorkspaceToggle(workspace.id)}
+                        >
+                          <Folder
+                            className={`size-4 shrink-0 ${isSelected ? 'text-accent' : 'text-muted'}`}
+                          />
+                          <span className="truncate">{workspace.label}</span>
+                          {!workspace.available ? (
+                            <span className="ml-auto shrink-0 text-xs text-danger">
+                              不可用
+                            </span>
+                          ) : null}
+                        </Button>
+                        <Dropdown>
+                          <Dropdown.Trigger
+                            aria-label={`管理工作区：${workspace.label}`}
+                            className="-ml-9 mr-1 size-8 shrink-0 opacity-100 transition-opacity md:opacity-0 md:group-focus-within/workspace:opacity-100 md:group-hover/workspace:opacity-100"
+                            isDisabled={isDeletingWorkspace}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <Ellipsis className="size-4" />
+                          </Dropdown.Trigger>
+                          <Dropdown.Popover
+                            className="min-w-40"
+                            placement="bottom end"
+                          >
+                            <Dropdown.Menu
+                              aria-label="工作区操作"
+                              onAction={(key) => {
+                                if (key === 'delete') {
+                                  setWorkspaceToDelete(workspace)
+                                }
+                              }}
+                            >
+                              <Dropdown.Item
+                                className="text-danger"
+                                id="delete"
+                                textValue="删除工作区"
+                              >
+                                <TrashBin className="size-4" />
+                                删除工作区
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown.Popover>
+                        </Dropdown>
+                      </div>
 
                       {isExpanded ? (
                         workspaceThreads.length > 0 ? (
@@ -180,28 +368,18 @@ export function SidebarContents({
                             showGuideLines={false}
                           >
                             {workspaceThreads.map((thread) => (
-                              <Sidebar.MenuItem
+                              <ConversationItem
                                 key={thread.id}
-                                href={`/${thread.id}`}
-                                id={`${idPrefix}${thread.id}`}
+                                idPrefix={idPrefix}
                                 isCurrent={
                                   activePage.kind === 'thread' &&
                                   activePage.thread.id === thread.id
                                 }
-                                textValue={thread.title}
-                                onAction={() => onWorkspaceSelect(workspace.id)}
-                              >
-                                <Sidebar.MenuLabel className="min-w-0">
-                                  <span className="flex min-w-0 items-center justify-between gap-2">
-                                    <span className="truncate">
-                                      {thread.title}
-                                    </span>
-                                    <span className="shrink-0 text-xs text-muted">
-                                      {thread.updatedAt}
-                                    </span>
-                                  </span>
-                                </Sidebar.MenuLabel>
-                              </Sidebar.MenuItem>
+                                thread={thread}
+                                onArchive={onThreadArchive}
+                                onError={setSessionError}
+                                onRename={onThreadRename}
+                              />
                             ))}
                           </Sidebar.Menu>
                         ) : (
@@ -227,6 +405,11 @@ export function SidebarContents({
                   {workspaceError}
                 </p>
               ) : null}
+              {sessionError ? (
+                <p aria-live="polite" className="mt-2 px-2 text-xs text-danger">
+                  {sessionError}
+                </p>
+              ) : null}
             </Sidebar.Group>
           </>
         ) : null}
@@ -246,6 +429,21 @@ export function SidebarContents({
           </Sidebar.MenuItem>
         </Sidebar.Menu>
       </Sidebar.Footer>
+
+      {workspaceToDelete ? (
+        <DestructiveActionDialog
+          confirmLabel="删除工作区"
+          description={`将从 Devaid 中删除“${workspaceToDelete.label}”及其全部普通、归档对话。本地工作区目录和源码不会被删除，此操作无法撤销会话记录。`}
+          error={workspaceDeleteError}
+          isPending={isDeletingWorkspace}
+          title="删除工作区"
+          onClose={() => {
+            setWorkspaceDeleteError('')
+            setWorkspaceToDelete(undefined)
+          }}
+          onConfirm={() => void deleteWorkspace()}
+        />
+      ) : null}
     </>
   )
 }

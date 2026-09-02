@@ -6,9 +6,12 @@ export interface CreateAgentSessionDto {
 }
 
 export type UpdateAgentSessionDto =
-  { name: null | string } | { modelId: string; providerId: string }
+  | { archived: boolean }
+  | { name: null | string }
+  | { modelId: string; providerId: string }
 
 export interface AgentSessionDto {
+  archived: boolean
   createdAt: number
   id: string
   modelId: string

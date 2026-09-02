@@ -182,6 +182,7 @@ export const toChatMessages = (
 }
 
 export const toChatThread = (session: AgentSessionVo): ChatThread => ({
+  archived: session.archived,
   id: session.id,
   messages: [],
   modelId: session.modelId,
@@ -195,6 +196,7 @@ export const toChatThread = (session: AgentSessionVo): ChatThread => ({
 })
 
 export const createPendingChatThread = (sessionId: string): ChatThread => ({
+  archived: false,
   id: sessionId,
   messages: [],
   modelId: '',

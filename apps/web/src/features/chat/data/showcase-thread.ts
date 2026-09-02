@@ -11,6 +11,7 @@ export type ChatStatus = "ready" | "streaming" | "submitted";
 - 显式组合 \`ChatMessage\`、\`Markdown\` 和 \`Reasoning\``
 
 export const SHOWCASE_THREAD: ChatThread = {
+  archived: false,
   id: 'pro-ai-showcase',
   messages: [
     {
