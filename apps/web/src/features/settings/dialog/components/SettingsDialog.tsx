@@ -20,6 +20,7 @@ import { PluginsSettingsSection } from '../../plugins/components/PluginsSettings
 import type { ArchivedConversation } from '../types/settings-dialog.ts'
 import { SettingsSelect } from './SettingsSelect.tsx'
 import { ArchivedConversationsSection } from './ArchivedConversationsSection.tsx'
+import { FileEditorSettings } from './FileEditorSettings.tsx'
 
 interface SettingsDialogProps {
   archivedConversations: readonly ArchivedConversation[]
@@ -130,6 +131,8 @@ export function SettingsDialog({
                     value={language}
                     onChange={setLanguage}
                   />
+
+                  <FileEditorSettings />
 
                   <section className="py-6 first:pt-0">
                     <h3 className="text-base font-medium text-foreground">

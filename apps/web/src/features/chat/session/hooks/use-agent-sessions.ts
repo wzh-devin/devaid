@@ -596,6 +596,7 @@ export function useAgentSessions() {
             skillIds: contextItems.flatMap((item) =>
               item.kind === 'skill' && item.sourceId ? [item.sourceId] : [],
             ),
+            thinkingLevel: payload.thinkingLevel,
           },
           (event) => {
             switch (event.type) {

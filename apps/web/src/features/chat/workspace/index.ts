@@ -1,7 +1,24 @@
-export { WorkspaceFilePreview } from './components/index.ts'
+export {
+  FileEditorOpenDialog,
+  WorkspaceFilePreview,
+} from './components/index.ts'
+export {
+  clearDefaultFileEditor,
+  getFileEditorPreference,
+  openWorkspaceFile,
+  selectFileEditor,
+  setDefaultFileEditor,
+  WorkspaceApiError,
+} from './api/index.ts'
+export type {
+  FileEditorPreferenceVo,
+  FileEditorSelectionVo,
+  FileEditorVo,
+} from './api/index.ts'
 export { ChatWorkspaceContext, useChatWorkspace } from './contexts/index.ts'
 export {
   findWorkspaceByThreadId,
+  getWorkspaceFileReference,
   resolveComposerWorkspace,
 } from './data/index.ts'
 export type { ChatWorkspace } from './data/index.ts'

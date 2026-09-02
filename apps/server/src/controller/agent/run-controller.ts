@@ -4,6 +4,7 @@ import {
   type AgentRun,
   type AgentRunAttachment,
   type AgentRuntime,
+  type ModelThinkingLevel,
 } from '@devaid/agent-runtime'
 import type { Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
@@ -19,6 +20,15 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_TEXT_BYTES = 1024 * 1024
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024
 const MAX_TEXT_CHARACTERS = 200_000
+const thinkingLevels = new Set<ModelThinkingLevel>([
+  'off',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+])
 const textExtensions = new Set([
   'c',
   'cc',
@@ -67,10 +77,13 @@ function parseMessage(
         key !== 'commandId' &&
         key !== 'content' &&
         key !== 'permission' &&
-        key !== 'skillIds',
+        key !== 'skillIds' &&
+        key !== 'thinkingLevel',
     ) ||
     typeof record.content !== 'string' ||
-    !isToolPermission(record.permission)
+    !isToolPermission(record.permission) ||
+    (record.thinkingLevel !== undefined &&
+      !thinkingLevels.has(record.thinkingLevel as ModelThinkingLevel))
   ) {
     return undefined
   }
@@ -99,6 +112,9 @@ function parseMessage(
     content: record.content,
     permission: record.permission,
     ...(skillIds?.length ? { skillIds } : {}),
+    ...(record.thinkingLevel === undefined
+      ? {}
+      : { thinkingLevel: record.thinkingLevel as ModelThinkingLevel }),
   }
 }
 

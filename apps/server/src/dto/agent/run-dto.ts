@@ -1,5 +1,8 @@
 import type { ToolPermission } from '@devaid/agent-policy'
-import type { AgentRunAttachment } from '@devaid/agent-runtime'
+import type {
+  AgentRunAttachment,
+  ModelThinkingLevel,
+} from '@devaid/agent-runtime'
 
 export interface BashOutcomeDto {
   exitCode: number | null
@@ -14,6 +17,7 @@ export interface SendAgentMessageDto {
   content: string
   permission: ToolPermission
   skillIds?: readonly string[]
+  thinkingLevel?: ModelThinkingLevel
 }
 
 export type AgentRunEventDto =

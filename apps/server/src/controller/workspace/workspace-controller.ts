@@ -4,9 +4,13 @@ import type { Context } from 'hono'
 
 import type {
   CreateWorkspaceDto,
+  FileEditorPreferenceDto,
+  FileEditorSelectionDto,
+  OpenWorkspaceFileDto,
   WorkspaceDto,
   WorkspaceFileDto,
 } from '../../dto/workspace/workspace-dto.ts'
+import type { FileEditorService } from '../../infrastructure/workspace/file-editor-service.ts'
 import {
   WorkspaceError,
   type WorkspaceState,
@@ -15,6 +19,57 @@ import {
 import { selectNativeWorkspaceDirectory } from '../../infrastructure/workspace/native-directory-picker.ts'
 
 const MAX_PREVIEW_BYTES = 1024 * 1024
+
+function parseOpenWorkspaceFile(
+  value: unknown,
+): OpenWorkspaceFileDto | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  const record = value as Record<string, unknown>
+  const keys = Object.keys(record).sort()
+  if (
+    typeof record.path !== 'string' ||
+    !record.path ||
+    record.path.length > 4096 ||
+    record.path.includes('\0')
+  ) {
+    return undefined
+  }
+  if (keys.length === 1 && keys[0] === 'path') {
+    return { path: record.path }
+  }
+  if (
+    keys.join(',') !== 'path,remember,selectionId' ||
+    typeof record.selectionId !== 'string' ||
+    !record.selectionId ||
+    record.selectionId.length > 200 ||
+    typeof record.remember !== 'boolean'
+  ) {
+    return undefined
+  }
+  return {
+    path: record.path,
+    remember: record.remember,
+    selectionId: record.selectionId,
+  }
+}
+
+function parseSelection(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+  const record = value as Record<string, unknown>
+  if (
+    Object.keys(record).length !== 1 ||
+    typeof record.selectionId !== 'string' ||
+    !record.selectionId ||
+    record.selectionId.length > 200
+  ) {
+    return undefined
+  }
+  return record.selectionId
+}
 
 function parseCreateWorkspace(value: unknown): CreateWorkspaceDto | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -73,11 +128,45 @@ function fileErrorResponse(context: Context, code: string) {
   )
 }
 
+function fileOpenErrorResponse(context: Context, code: string) {
+  if (code === 'permission_denied') {
+    return context.json(
+      { code: 'FILE_OPEN_FORBIDDEN', message: '该文件不在当前工作区内。' },
+      403,
+    )
+  }
+  if (code === 'not_found') {
+    return context.json(
+      { code: 'FILE_OPEN_NOT_FOUND', message: '文件不存在或已被删除。' },
+      404,
+    )
+  }
+  if (code === 'invalid' || code === 'is_directory') {
+    return context.json(
+      { code: 'INVALID_FILE_OPEN', message: '文件路径无效。' },
+      400,
+    )
+  }
+  return context.json(
+    { code: 'FILE_OPEN_FAILED', message: '无法打开该文件。' },
+    500,
+  )
+}
+
+function requireFileEditorRequest(context: Context) {
+  if (context.req.header('x-devaid-request') === 'file-editor') return true
+  return context.json(
+    { code: 'FILE_EDITOR_FORBIDDEN', message: '本地应用请求无效。' },
+    403,
+  )
+}
+
 /** 创建本地工作区注册与查询 Controller。 */
 export function createWorkspaceController(
   workspaces: WorkspaceStore,
   dataDirectory: string,
   runtime: AgentRuntime,
+  fileEditors: FileEditorService,
 ) {
   return {
     create: async (context: Context) => {
@@ -216,6 +305,116 @@ export function createWorkspaceController(
           typeof (error as { code?: unknown }).code === 'string'
         ) {
           return fileErrorResponse(context, (error as { code: string }).code)
+        }
+        return workspaceErrorResponse(context, error)
+      }
+    },
+    getFileEditor: async (context: Context) => {
+      const forbidden = requireFileEditorRequest(context)
+      if (forbidden !== true) return forbidden
+      context.header('cache-control', 'no-store')
+      try {
+        const editor = await fileEditors.getDefaultEditor()
+        return context.json({
+          defaultEditor: editor ? { name: editor.name } : null,
+          supported: fileEditors.supported,
+        } satisfies FileEditorPreferenceDto)
+      } catch (error) {
+        return workspaceErrorResponse(context, error)
+      }
+    },
+    selectFileEditor: async (context: Context) => {
+      const forbidden = requireFileEditorRequest(context)
+      if (forbidden !== true) return forbidden
+      context.header('cache-control', 'no-store')
+      try {
+        const selection = await fileEditors.selectEditor()
+        if (!selection) return context.body(null, 204)
+        return context.json(selection satisfies FileEditorSelectionDto)
+      } catch (error) {
+        return workspaceErrorResponse(context, error)
+      }
+    },
+    setDefaultFileEditor: async (context: Context) => {
+      const forbidden = requireFileEditorRequest(context)
+      if (forbidden !== true) return forbidden
+      const selectionId = parseSelection(
+        await context.req.json<unknown>().catch(() => undefined),
+      )
+      if (!selectionId) {
+        return context.json(
+          { code: 'INVALID_FILE_EDITOR_REQUEST', message: '应用选择无效。' },
+          400,
+        )
+      }
+      try {
+        const editor = await fileEditors.rememberSelection(selectionId)
+        return context.json({ name: editor.name })
+      } catch (error) {
+        return workspaceErrorResponse(context, error)
+      }
+    },
+    clearDefaultFileEditor: async (context: Context) => {
+      const forbidden = requireFileEditorRequest(context)
+      if (forbidden !== true) return forbidden
+      try {
+        await fileEditors.clearDefaultEditor()
+        return context.body(null, 204)
+      } catch (error) {
+        return workspaceErrorResponse(context, error)
+      }
+    },
+    openFile: async (context: Context) => {
+      const forbidden = requireFileEditorRequest(context)
+      if (forbidden !== true) return forbidden
+      context.header('cache-control', 'no-store')
+      const input = parseOpenWorkspaceFile(
+        await context.req.json<unknown>().catch(() => undefined),
+      )
+      const workspaceId = context.req.param('workspaceId')
+      if (!workspaceId || workspaceId.length > 200 || !input) {
+        return context.json(
+          { code: 'INVALID_FILE_OPEN', message: '文件打开请求无效。' },
+          400,
+        )
+      }
+
+      try {
+        const workspace = await workspaces.requireAvailable(workspaceId)
+        const environment = await WorkspaceExecutionEnv.create(workspace.path, [
+          dataDirectory,
+        ])
+        const info = await environment.fileInfo(input.path)
+        if (!info.ok) return fileOpenErrorResponse(context, info.error.code)
+        if (info.value.kind !== 'file') {
+          return context.json(
+            { code: 'INVALID_FILE_OPEN', message: '只能打开普通文件。' },
+            400,
+          )
+        }
+        const canonical = await environment.canonicalPath(input.path)
+        if (!canonical.ok) {
+          return fileOpenErrorResponse(context, canonical.error.code)
+        }
+        const result = await fileEditors.openFile(canonical.value, {
+          remember: input.remember,
+          selectionId: input.selectionId,
+        })
+        return context.json({
+          editor: { name: result.editor.name },
+          remembered: result.remembered,
+        })
+      } catch (error) {
+        if (
+          !(error instanceof WorkspaceError) &&
+          error &&
+          typeof error === 'object' &&
+          typeof (error as { code?: unknown }).code === 'string'
+        ) {
+          return fileOpenErrorResponse(
+            context,
+            (error as { code: string }).code,
+          )
         }
         return workspaceErrorResponse(context, error)
       }

@@ -4,9 +4,11 @@ export {
   getSelectableModelGroups,
   mergeProviderModels,
   resolveModelSelectionKey,
+  resolveModelThinkingLevel,
 } from './data/index.ts'
 export type {
   ApiProtocol,
+  ModelThinkingLevel,
   ModelProvider,
   ProviderConfiguration,
   ProviderModelConfig,

@@ -3,8 +3,13 @@ export {
   createInitialModelProviders,
   getSelectableModelGroups,
   resolveModelSelectionKey,
+  resolveModelThinkingLevel,
 } from './models/index.ts'
-export type { ModelProvider, SelectableModelGroup } from './models/index.ts'
+export type {
+  ModelProvider,
+  ModelThinkingLevel,
+  SelectableModelGroup,
+} from './models/index.ts'
 export {
   PERMISSION_OPTIONS,
   SettingsProvider,

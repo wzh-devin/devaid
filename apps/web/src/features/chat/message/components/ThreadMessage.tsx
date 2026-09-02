@@ -70,7 +70,10 @@ export function ThreadMessage({ compact, message }: ThreadMessageProps) {
 
       <ChatMessagePrimitive.Body>
         {message.reasoning ? (
-          <ReasoningPanel reasoning={message.reasoning} />
+          <ReasoningPanel
+            reasoning={message.reasoning}
+            streaming={message.status === 'streaming'}
+          />
         ) : null}
 
         {message.tools?.map((tool, index) => (

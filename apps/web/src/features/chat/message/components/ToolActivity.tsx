@@ -133,6 +133,7 @@ export function ToolActivity({ activity, status }: ToolActivityProps) {
                 <ReasoningPanel
                   key={`reasoning-${index}`}
                   reasoning={part.reasoning}
+                  streaming={isRunning && index === displayParts.length - 1}
                 />
               )
             }

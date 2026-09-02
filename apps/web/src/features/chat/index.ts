@@ -14,12 +14,18 @@ export {
 } from './navigation/index.ts'
 export {
   ChatWorkspaceContext,
+  clearDefaultFileEditor,
+  FileEditorOpenDialog,
   findWorkspaceByThreadId,
+  getFileEditorPreference,
+  openWorkspaceFile,
   resolveComposerWorkspace,
+  selectFileEditor,
+  setDefaultFileEditor,
   useChatWorkspace,
   useWorkspaces,
-  WorkspaceFilePreview,
+  WorkspaceApiError,
 } from './workspace/index.ts'
-export type { ChatWorkspace } from './workspace/index.ts'
+export type { ChatWorkspace, FileEditorSelectionVo } from './workspace/index.ts'
 export { createPendingChatThread, useAgentSessions } from './session/index.ts'
 export type { PendingToolApprovalVo } from './session/index.ts'

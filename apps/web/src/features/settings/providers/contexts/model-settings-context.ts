@@ -5,6 +5,7 @@ import {
   type SetStateAction,
 } from 'react'
 import type { ModelProvider } from '../../models/data/provider-models.ts'
+import type { ModelThinkingLevel } from '../../models/types/provider-vo.ts'
 
 interface ModelSettingsContextValue {
   error: string | null
@@ -12,6 +13,8 @@ interface ModelSettingsContextValue {
   providers: ModelProvider[]
   refreshProviders: () => Promise<void>
   setProviders: Dispatch<SetStateAction<ModelProvider[]>>
+  setThinkingLevel: Dispatch<SetStateAction<ModelThinkingLevel>>
+  thinkingLevel: ModelThinkingLevel
 }
 
 export const ModelSettingsContext =

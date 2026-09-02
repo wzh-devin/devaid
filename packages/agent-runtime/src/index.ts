@@ -6,6 +6,7 @@ export type {
   AgentMessageContextItem,
   AgentRunAttachment,
   AgentRunInput,
+  ModelThinkingLevel,
 } from './execution/run-input.ts'
 export type {
   AgentCapabilityCatalog,

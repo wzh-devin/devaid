@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppLayout } from '@agile-avocation/ui-pro/app-layout'
 import '../styles/ChatLayout.css'
 import {
@@ -10,7 +10,11 @@ import {
   type ChatThread,
   ChatWorkspaceContext,
   type ChatWorkspace,
-  WorkspaceFilePreview,
+  FileEditorOpenDialog,
+  type FileEditorSelectionVo,
+  openWorkspaceFile,
+  selectFileEditor,
+  WorkspaceApiError,
 } from '../features/chat/index.ts'
 import {
   type PluginSettingsTab,
@@ -37,6 +41,21 @@ interface ChatLayoutProps {
   workspaceError: string
 }
 
+interface FileEditorDialogState {
+  editor?: FileEditorSelectionVo
+  error?: string
+  path: string
+  workspaceId: string
+}
+
+const requiresEditorSelection = (error: unknown) =>
+  error instanceof WorkspaceApiError &&
+  (error.code === 'FILE_EDITOR_REQUIRED' ||
+    error.code === 'FILE_EDITOR_UNAVAILABLE')
+
+const getFileEditorError = (error: unknown) =>
+  error instanceof Error ? error.message : '无法打开该文件。'
+
 /** 组合聊天应用外壳，并统一管理搜索弹窗与全局快捷键。 */
 export function ChatLayout({
   activePage,
@@ -58,11 +77,11 @@ export function ChatLayout({
 }: ChatLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isFilePreviewOpen, setIsFilePreviewOpen] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<{
-    path: string
-    workspaceId: string
-  }>()
+  const [fileEditorDialog, setFileEditorDialog] =
+    useState<FileEditorDialogState>()
+  const [isFileEditorPending, setIsFileEditorPending] = useState(false)
+  const fileEditorRequestId = useRef(0)
+  const isFileEditorBusy = useRef(false)
   const [settingsTarget, setSettingsTarget] = useState<{
     pluginTab: PluginSettingsTab
     section: 'archived' | 'general' | 'plugins'
@@ -86,18 +105,113 @@ export function ChatLayout({
     [onNavigate],
   )
 
-  const handleFileOpen = useCallback(
-    (path: string) => {
-      if (!activeWorkspaceId) return
-      setSelectedFile({ path, workspaceId: activeWorkspaceId })
-      setIsFilePreviewOpen(true)
+  const chooseFileEditor = useCallback(
+    async (
+      target: Pick<FileEditorDialogState, 'path' | 'workspaceId'>,
+      requestId: number,
+    ) => {
+      try {
+        const editor = await selectFileEditor()
+        if (requestId !== fileEditorRequestId.current || !editor) return
+        setFileEditorDialog({ ...target, editor })
+      } catch (error) {
+        if (requestId !== fileEditorRequestId.current) return
+        setFileEditorDialog({ ...target, error: getFileEditorError(error) })
+      }
     },
-    [activeWorkspaceId],
+    [],
   )
 
+  const handleFileOpen = useCallback(
+    (path: string) => {
+      if (!activeWorkspaceId || isFileEditorBusy.current) return
+      const target = { path, workspaceId: activeWorkspaceId }
+      const requestId = ++fileEditorRequestId.current
+      isFileEditorBusy.current = true
+      setFileEditorDialog(undefined)
+      setIsFileEditorPending(true)
+      void openWorkspaceFile(activeWorkspaceId, path)
+        .catch(async (error: unknown) => {
+          if (requestId !== fileEditorRequestId.current) return
+          if (requiresEditorSelection(error)) {
+            await chooseFileEditor(target, requestId)
+            return
+          }
+          setFileEditorDialog({ ...target, error: getFileEditorError(error) })
+        })
+        .finally(() => {
+          isFileEditorBusy.current = false
+          if (requestId === fileEditorRequestId.current) {
+            setIsFileEditorPending(false)
+          }
+        })
+    },
+    [activeWorkspaceId, chooseFileEditor],
+  )
+
+  const handleEditorReselect = useCallback(() => {
+    if (!fileEditorDialog || isFileEditorBusy.current) return
+    const target = {
+      path: fileEditorDialog.path,
+      workspaceId: fileEditorDialog.workspaceId,
+    }
+    const requestId = ++fileEditorRequestId.current
+    isFileEditorBusy.current = true
+    setIsFileEditorPending(true)
+    void chooseFileEditor(target, requestId).finally(() => {
+      isFileEditorBusy.current = false
+      if (requestId === fileEditorRequestId.current) {
+        setIsFileEditorPending(false)
+      }
+    })
+  }, [chooseFileEditor, fileEditorDialog])
+
+  const handleEditorOpen = useCallback(
+    (remember: boolean) => {
+      if (!fileEditorDialog?.editor || isFileEditorBusy.current) return
+      const editor = fileEditorDialog.editor
+      const requestId = ++fileEditorRequestId.current
+      isFileEditorBusy.current = true
+      const currentDialog = fileEditorDialog
+      setIsFileEditorPending(true)
+      setFileEditorDialog({ ...currentDialog, error: undefined })
+      void openWorkspaceFile(currentDialog.workspaceId, currentDialog.path, {
+        remember,
+        selectionId: editor.selectionId,
+      })
+        .then(() => {
+          if (requestId === fileEditorRequestId.current) {
+            setFileEditorDialog(undefined)
+          }
+        })
+        .catch((error: unknown) => {
+          if (requestId !== fileEditorRequestId.current) return
+          setFileEditorDialog({
+            ...currentDialog,
+            error: getFileEditorError(error),
+          })
+        })
+        .finally(() => {
+          isFileEditorBusy.current = false
+          if (requestId === fileEditorRequestId.current) {
+            setIsFileEditorPending(false)
+          }
+        })
+    },
+    [fileEditorDialog],
+  )
+
+  const handleEditorDialogClose = useCallback(() => {
+    fileEditorRequestId.current += 1
+    setIsFileEditorPending(false)
+    setFileEditorDialog(undefined)
+  }, [])
+
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- Thread 变化必须清除上一个工作区的文件选择。
-    setSelectedFile(undefined)
+    fileEditorRequestId.current += 1
+    // oxlint-disable-next-line react/set-state-in-effect -- Thread 变化必须清除上一个工作区的本地打开选择。
+    setFileEditorDialog(undefined)
+    setIsFileEditorPending(false)
   }, [activePageId])
 
   useEffect(() => {
@@ -129,32 +243,10 @@ export function ChatLayout({
         }}
       >
         <AppLayout
-          aside={
-            isThreadPage &&
-            selectedFile &&
-            selectedFile.workspaceId === activeWorkspaceId ? (
-              <WorkspaceFilePreview
-                key={`${selectedFile.workspaceId}:${selectedFile.path}`}
-                path={selectedFile.path}
-                workspaceId={selectedFile.workspaceId}
-              />
-            ) : undefined
-          }
-          asideDefaultSize="420px"
-          asideMaxSize="50%"
-          asideMinSize="360px"
-          asideMobile="sheet"
-          asideOpen={isThreadPage && isFilePreviewOpen}
-          asideResizable={isThreadPage && Boolean(selectedFile)}
-          className={
-            isThreadPage
-              ? `chat-layout--thread${isFilePreviewOpen ? ' chat-layout--file-preview-open' : ''}`
-              : undefined
-          }
+          className={isThreadPage ? 'chat-layout--thread' : undefined}
           key={isThreadPage ? 'thread-layout' : 'standard-layout'}
           navigate={onNavigate}
           sidebarCollapsible="icon"
-          onAsideOpenChange={setIsFilePreviewOpen}
           navbar={
             <ChatNavbar
               activePage={activePage}
@@ -192,6 +284,17 @@ export function ChatLayout({
             onOpenChange={setIsSearchOpen}
             onSelect={handleThreadSelect}
           />
+          {fileEditorDialog ? (
+            <FileEditorOpenDialog
+              editor={fileEditorDialog.editor}
+              error={fileEditorDialog.error}
+              isPending={isFileEditorPending}
+              path={fileEditorDialog.path}
+              onClose={handleEditorDialogClose}
+              onOpen={handleEditorOpen}
+              onReselect={handleEditorReselect}
+            />
+          ) : null}
           <SettingsDialog
             archivedConversations={archivedThreads.map((thread) => ({
               id: thread.id,

@@ -12,6 +12,7 @@ import { Button } from '@heroui/react'
 import { SelectMenu } from '../../../../components/ui/index.ts'
 import {
   getSelectableModelGroups,
+  resolveModelThinkingLevel,
   resolveModelSelectionKey,
   useModelSettings,
   usePermissionSettings,
@@ -100,7 +101,7 @@ export function ChatComposer({
   const [menuState, setMenuState] = useState<ComposerMenuState | null>(null)
   const [modelKey, setModelKey] = useState('')
   const [isModelUpdating, setIsModelUpdating] = useState(false)
-  const { providers } = useModelSettings()
+  const { providers, setThinkingLevel, thinkingLevel } = useModelSettings()
   const { permission } = usePermissionSettings()
   const { commands, openPluginSettings, skills } = usePluginSettings()
   const { onWorkspaceSelect, selectedWorkspaceId, workspaces } =
@@ -127,6 +128,10 @@ export function ChatComposer({
   )
   const selectedProvider = modelGroups.find((group) =>
     group.models.some((model) => model.key === selectedModelKey),
+  )
+  const selectedThinkingLevel = resolveModelThinkingLevel(
+    selectedModel?.thinkingLevels ?? ['off'],
+    thinkingLevel,
   )
   const capabilityGroups = menuState
     ? getComposerCapabilityGroups(
@@ -204,6 +209,7 @@ export function ChatComposer({
         modelId: selectedModel.id,
         permission,
         providerId: selectedProvider.id,
+        thinkingLevel: selectedThinkingLevel,
         workspaceId: composerWorkspace.workspaceId,
       })
     } finally {
@@ -550,7 +556,9 @@ export function ChatComposer({
                 isDisabled={isDisabled || isGenerating || isModelUpdating}
                 selectedKey={selectedModelKey}
                 selectedName={selectedModel?.name}
+                selectedThinkingLevel={selectedThinkingLevel}
                 onChange={(key) => void handleModelChange(key)}
+                onThinkingLevelChange={setThinkingLevel}
               />
               <PromptInput.Send
                 aria-label={isGenerating ? '停止生成' : '发送消息'}

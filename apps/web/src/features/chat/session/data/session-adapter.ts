@@ -154,6 +154,10 @@ export const toChatMessages = (
 
     if (!isToolActivity) {
       if (previous?.activity && message.role === 'assistant') {
+        const finalReasoningParts = toActivityParts(
+          message,
+          chatMessage,
+        ).filter((part) => part.type === 'reasoning')
         chatMessages[chatMessages.length - 1] = {
           ...previous,
           activity: {
@@ -162,10 +166,24 @@ export const toChatMessages = (
             hasError:
               message.stopReason === 'aborted' ||
               message.stopReason === 'error',
+            parts: [...(previous.activity.parts ?? []), ...finalReasoningParts],
+            reasoning: chatMessage.reasoning
+              ? {
+                  defaultExpanded: false,
+                  steps: [
+                    ...(previous.activity.reasoning?.steps ?? []),
+                    ...chatMessage.reasoning.steps,
+                  ],
+                }
+              : previous.activity.reasoning,
           },
         }
       }
-      chatMessages.push(chatMessage)
+      chatMessages.push(
+        previous?.activity && message.role === 'assistant'
+          ? { ...chatMessage, reasoning: undefined }
+          : chatMessage,
+      )
       if (message.role === 'assistant') runStartedAt = undefined
     } else if (previous?.activity) {
       chatMessages[chatMessages.length - 1] = mergeActivityMessage(

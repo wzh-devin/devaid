@@ -12,6 +12,24 @@ export interface WorkspaceFileVo {
   size: number
 }
 
+export interface FileEditorVo {
+  name: string
+}
+
+export interface FileEditorSelectionVo extends FileEditorVo {
+  selectionId: string
+}
+
+export interface FileEditorPreferenceVo {
+  defaultEditor: FileEditorVo | null
+  supported: boolean
+}
+
+export interface OpenWorkspaceFileVo {
+  editor: FileEditorVo
+  remembered: boolean
+}
+
 export class WorkspaceApiError extends Error {
   readonly code: string
   readonly status: number
@@ -78,3 +96,48 @@ export const readWorkspaceFile = (
     },
   )
 }
+
+const FILE_EDITOR_HEADERS = { 'x-devaid-request': 'file-editor' }
+
+/** 查询运行 Devaid Server 的电脑所使用的默认文件编辑器。 */
+export const getFileEditorPreference = () =>
+  request<FileEditorPreferenceVo>('/api/workspaces/file-editor', {
+    headers: FILE_EDITOR_HEADERS,
+  })
+
+/** 调起 Server 所在 macOS 的原生应用选择器。 */
+export const selectFileEditor = () =>
+  request<FileEditorSelectionVo | null>('/api/workspaces/file-editor/select', {
+    headers: FILE_EDITOR_HEADERS,
+    method: 'POST',
+  })
+
+/** 把一次服务端应用选择保存为默认编辑器。 */
+export const setDefaultFileEditor = (selectionId: string) =>
+  request<FileEditorVo>('/api/workspaces/file-editor/default', {
+    body: JSON.stringify({ selectionId }),
+    headers: { ...FILE_EDITOR_HEADERS, 'content-type': 'application/json' },
+    method: 'PUT',
+  })
+
+/** 清除默认编辑器，让下次点击文件时重新选择。 */
+export const clearDefaultFileEditor = () =>
+  request<void>('/api/workspaces/file-editor/default', {
+    headers: FILE_EDITOR_HEADERS,
+    method: 'DELETE',
+  })
+
+/** 使用默认编辑器或一次性选择，在 Server 所在电脑上打开工作区文件。 */
+export const openWorkspaceFile = (
+  workspaceId: string,
+  path: string,
+  selection?: { remember: boolean; selectionId: string },
+) =>
+  request<OpenWorkspaceFileVo>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/files/open`,
+    {
+      body: JSON.stringify({ path, ...selection }),
+      headers: { ...FILE_EDITOR_HEADERS, 'content-type': 'application/json' },
+      method: 'POST',
+    },
+  )

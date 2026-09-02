@@ -12,7 +12,11 @@ export interface ApiKeyCredentialRequestDto {
 export interface ProviderModelInfoDto {
   id: string
   name: string
+  thinkingLevels?: ModelThinkingLevelDto[]
 }
+
+export type ModelThinkingLevelDto =
+  'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 export interface ProviderInfoDto {
   authStatus: ProviderAuthStatusDto

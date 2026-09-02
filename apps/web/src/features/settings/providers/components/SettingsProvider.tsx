@@ -4,6 +4,7 @@ import {
   createInitialModelProviders,
   toModelProvider,
 } from '../../models/data/provider-models.ts'
+import type { ModelThinkingLevel } from '../../models/types/provider-vo.ts'
 import { INITIAL_PLUGIN_CONNECTORS } from '../../plugins/data/plugin-connectors.ts'
 import { getAgentCapabilities } from '../api/index.ts'
 import { ModelSettingsContext } from '../contexts/model-settings-context.ts'
@@ -34,6 +35,7 @@ export function SettingsProvider({
   const [providers, setProviders] = useState(createInitialModelProviders)
   const [isLoadingProviders, setIsLoadingProviders] = useState(true)
   const [providerError, setProviderError] = useState<string | null>(null)
+  const [thinkingLevel, setThinkingLevel] = useState<ModelThinkingLevel>('off')
   const [permission, setPermission] = useState<PermissionId>('workspace-write')
   const [skills, setSkills] = useState<AssistantSkill[]>([])
   const [commands, setCommands] = useState<CapabilityCommand[]>([])
@@ -118,6 +120,8 @@ export function SettingsProvider({
           providers,
           refreshProviders,
           setProviders,
+          setThinkingLevel,
+          thinkingLevel,
         }}
       >
         <PluginSettingsContext.Provider

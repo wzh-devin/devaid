@@ -1,4 +1,7 @@
-import type { PermissionId } from '../../../settings/index.ts'
+import type {
+  ModelThinkingLevel,
+  PermissionId,
+} from '../../../settings/index.ts'
 import type { ComposerContextItem } from '../capabilities/composer-capabilities.ts'
 
 export interface ChatSubmitPayload {
@@ -8,5 +11,6 @@ export interface ChatSubmitPayload {
   modelId: string
   permission: PermissionId
   providerId: string
+  thinkingLevel: ModelThinkingLevel
   workspaceId: string
 }

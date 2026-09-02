@@ -6,7 +6,10 @@ import type {
   PendingToolApprovalVo,
 } from '../types/index.ts'
 import type { ApprovalDecision } from '../../message/index.ts'
-import type { PermissionId } from '../../../settings/index.ts'
+import type {
+  ModelThinkingLevel,
+  PermissionId,
+} from '../../../settings/index.ts'
 
 interface CreateAgentSessionInput {
   modelId: string
@@ -39,6 +42,7 @@ export interface StreamAgentMessageInput {
   content: string
   permission: PermissionId
   skillIds: readonly string[]
+  thinkingLevel: ModelThinkingLevel
 }
 
 export interface ReconnectedAgentRun {
@@ -419,6 +423,7 @@ export async function streamAgentMessage(
     content: input.content,
     permission: input.permission,
     ...(input.skillIds.length ? { skillIds: input.skillIds } : {}),
+    thinkingLevel: input.thinkingLevel,
   }
   const body = input.attachments.length
     ? (() => {

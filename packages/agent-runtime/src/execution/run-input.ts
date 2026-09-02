@@ -1,3 +1,7 @@
+import type { ModelThinkingLevel } from '@earendil-works/pi-ai'
+
+export type { ModelThinkingLevel } from '@earendil-works/pi-ai'
+
 export interface AgentRunAttachment {
   content: string
   kind: 'image' | 'text'
@@ -11,6 +15,7 @@ export interface AgentRunInput {
   commandId?: string
   content: string
   skillIds?: readonly string[]
+  thinkingLevel?: ModelThinkingLevel
 }
 
 export interface AgentMessageAttachment {

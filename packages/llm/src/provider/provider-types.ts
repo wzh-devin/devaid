@@ -1,3 +1,7 @@
+import type { ModelThinkingLevel } from '@earendil-works/pi-ai'
+
+export type { ModelThinkingLevel } from '@earendil-works/pi-ai'
+
 export type AuthMethod = 'api_key' | 'oauth'
 
 export type ProviderAuthStatus =
@@ -8,6 +12,7 @@ export type ProviderConfigStatus = 'unconfigured' | 'configured'
 export interface ProviderModelInfo {
   id: string
   name: string
+  thinkingLevels?: ModelThinkingLevel[]
 }
 
 export interface ProviderInfo {

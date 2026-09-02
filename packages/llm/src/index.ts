@@ -13,6 +13,7 @@ export { FileProviderConfigStore } from './provider/provider-config-store.ts'
 export { createProviderModels } from './provider/provider-registry.ts'
 export type {
   AuthMethod,
+  ModelThinkingLevel,
   ProviderAuthStatus,
   ProviderConfig,
   ProviderConfigStatus,

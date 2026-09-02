@@ -4,6 +4,7 @@ import type {
   Models,
   Usage,
 } from '@earendil-works/pi-ai'
+import { getSupportedThinkingLevels } from '@earendil-works/pi-ai'
 
 import type { FileProviderConfigStore } from '../provider/provider-config-store.ts'
 import type {
@@ -89,7 +90,15 @@ export class ModelService {
             : ('unconfigured' as const),
           configuredAuthMethod: auth?.type,
           displayName: provider.name,
-          models: selectedModels,
+          models: selectedModels.map((selectedModel) => {
+            const model = this.models.getModel(provider.id, selectedModel.id)
+            return {
+              ...selectedModel,
+              thinkingLevels: model
+                ? getSupportedThinkingLevels(model)
+                : ['off' as const],
+            }
+          }),
           providerId: provider.id,
           ready: !!auth && selectedModels.length > 0,
         }
@@ -106,9 +115,11 @@ export class ModelService {
   /** 从 Pi AI Provider 读取完整模型目录，供未认证的新增流程使用。 */
   getProviderModels(providerId: string): ProviderModelInfo[] | undefined {
     if (!this.models.getProvider(providerId)) return undefined
-    return this.models
-      .getModels(providerId)
-      .map((model) => ({ id: model.id, name: model.id }))
+    return this.models.getModels(providerId).map((model) => ({
+      id: model.id,
+      name: model.id,
+      thinkingLevels: getSupportedThinkingLevels(model),
+    }))
   }
 
   /** 解析已启用且已认证的模型，供 Agent Runtime 安全复用。 */

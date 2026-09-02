@@ -8,15 +8,18 @@ import type { ChatMessageReasoning } from '../../data/chat-types.ts'
 
 interface ReasoningPanelProps {
   reasoning: ChatMessageReasoning
+  streaming?: boolean
 }
 
-export function ReasoningPanel({ reasoning }: ReasoningPanelProps) {
+/** 展示可折叠推理内容，并在当前片段流式输出时自动展开。 */
+export function ReasoningPanel({ reasoning, streaming }: ReasoningPanelProps) {
   return (
     <ReasoningRoot
       defaultOpen={reasoning.defaultExpanded ?? false}
+      streaming={streaming}
       variant="ghost"
     >
-      <ReasoningTrigger duration={reasoning.duration} />
+      <ReasoningTrigger active={streaming} duration={reasoning.duration} />
       <ReasoningContent>
         <ReasoningText>
           {reasoning.steps.map((step, stepIndex) => (

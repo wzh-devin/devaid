@@ -1,15 +1,48 @@
 import type { ComponentProps } from 'react'
 import { CodeBlock } from '@agile-avocation/ui-pro/code-block'
 import { Markdown, markdownVariants } from '@agile-avocation/ui-pro/markdown'
+import {
+  getWorkspaceFileReference,
+  useChatWorkspace,
+} from '../../workspace/index.ts'
 
 const markdownSlots = markdownVariants()
 const LOCALIZED_COMPONENTS = {
-  code: ({ children, className, node, ...props }) => {
+  code: function LocalizedCode({ children, className, node, ...props }) {
+    const { onFileOpen, selectedWorkspaceId } = useChatWorkspace()
     const isInline =
       !node?.position?.start.line ||
       node.position.start.line === node.position.end.line
 
     if (isInline) {
+      const fileReference = getWorkspaceFileReference(String(children ?? ''))
+      if (fileReference && selectedWorkspaceId && onFileOpen) {
+        return (
+          <button
+            aria-label={`打开文件 ${fileReference.path}`}
+            className="inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded align-middle font-sans text-sm text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            title={fileReference.path}
+            type="button"
+            onClick={() => onFileOpen(fileReference.path)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              onFileOpen(fileReference.path)
+            }}
+          >
+            <span
+              aria-hidden="true"
+              className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-accent/10 px-0.5 text-[9px] leading-none font-semibold"
+            >
+              {fileReference.label}
+            </span>
+            <span className="min-w-0 break-all underline decoration-accent/40 underline-offset-2">
+              {fileReference.path}
+            </span>
+          </button>
+        )
+      }
+
       return (
         <code
           className={`${markdownSlots.inlineCode()} ${className ?? ''}`.trim()}

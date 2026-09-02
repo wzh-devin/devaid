@@ -10,6 +10,7 @@ import { createCompletionRouter } from './llm/completion-router.ts'
 import { createOAuthRouter } from './llm/oauth-router.ts'
 import { createProviderRouter } from './llm/provider-router.ts'
 import { createWorkspaceRouter } from './workspace/workspace-router.ts'
+import type { FileEditorService } from '../infrastructure/workspace/file-editor-service.ts'
 import type { WorkspaceStore } from '../infrastructure/workspace/workspace-store.ts'
 
 /** 组合 Devaid 的全部 HTTP API 路由。 */
@@ -19,6 +20,7 @@ export function createApiRouter(
   runtime: AgentRuntime,
   workspaces: WorkspaceStore,
   dataDirectory: string,
+  fileEditors: FileEditorService,
 ) {
   const router = new Hono()
   router.route('/health', createHealthRouter())
@@ -33,7 +35,7 @@ export function createApiRouter(
   )
   router.route(
     '/workspaces',
-    createWorkspaceRouter(workspaces, dataDirectory, runtime),
+    createWorkspaceRouter(workspaces, dataDirectory, runtime, fileEditors),
   )
   return router
 }

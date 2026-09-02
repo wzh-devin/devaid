@@ -8,7 +8,11 @@ export type ProviderConfigStatusVo = 'unconfigured' | 'configured'
 export interface ProviderModelInfoVo {
   id: string
   name: string
+  thinkingLevels?: ModelThinkingLevel[]
 }
+
+export type ModelThinkingLevel =
+  'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 export interface ProviderInfoVo {
   authStatus: ProviderAuthStatusVo

@@ -1,13 +1,17 @@
 import type {
   AuthMethodVo,
+  ModelThinkingLevel,
   ProviderAuthStatusVo,
   ProviderConfigStatusVo,
   ProviderInfoVo,
 } from '../types/provider-vo.ts'
 
+export type { ModelThinkingLevel } from '../types/provider-vo.ts'
+
 export interface ProviderModelConfig {
   id: string
   name: string
+  thinkingLevels?: ModelThinkingLevel[]
 }
 
 export interface OAuthLoginOption {
@@ -44,6 +48,7 @@ export interface SelectableModel {
   id: string
   key: string
   name: string
+  thinkingLevels: ModelThinkingLevel[]
 }
 
 export interface SelectableModelGroup {
@@ -96,7 +101,14 @@ export const getSelectableModelGroups = (
       if (!id || knownKeys.has(key)) return []
 
       knownKeys.add(key)
-      return [{ id, key, name: model.name.trim() || id }]
+      return [
+        {
+          id,
+          key,
+          name: model.name.trim() || id,
+          thinkingLevels: [...(model.thinkingLevels ?? ['off'])],
+        },
+      ]
     })
 
     return models.length
@@ -104,6 +116,12 @@ export const getSelectableModelGroups = (
       : []
   })
 }
+
+/** 保留模型支持的推理等级，不支持时安全回退为关闭。 */
+export const resolveModelThinkingLevel = (
+  levels: readonly ModelThinkingLevel[],
+  current: ModelThinkingLevel,
+) => (levels.includes(current) ? current : 'off')
 
 /** 保留有效选择，否则按初始模型 ID 或首个可用模型回退。 */
 export const resolveModelSelectionKey = (

@@ -12,10 +12,12 @@ import { Hono } from 'hono'
 
 import { createJsonlSessionRepository } from './infrastructure/session/jsonl-session.ts'
 import { SessionIndex } from './infrastructure/session/session-index.ts'
+import { FileEditorService } from './infrastructure/workspace/file-editor-service.ts'
 import { WorkspaceStore } from './infrastructure/workspace/workspace-store.ts'
 import { createApiRouter } from './router/index.ts'
 
 export interface CreateAppOptions {
+  fileEditors?: FileEditorService
   models?: ModelService
 }
 
@@ -39,6 +41,8 @@ export async function createApp(
   const repository = await createJsonlSessionRepository(dataDirectory)
   const sessionIndex = await SessionIndex.create(dataDirectory, repository)
   const workspaces = new WorkspaceStore(dataDirectory)
+  const fileEditors =
+    options.fileEditors ?? new FileEditorService(dataDirectory)
   await workspaces.list()
   const runtime = new AgentRuntime(models, repository, sessionIndex, {
     dataDirectory,
@@ -55,7 +59,14 @@ export async function createApp(
 
   app.route(
     '/api',
-    createApiRouter(models, oauth, runtime, workspaces, dataDirectory),
+    createApiRouter(
+      models,
+      oauth,
+      runtime,
+      workspaces,
+      dataDirectory,
+      fileEditors,
+    ),
   )
 
   return app

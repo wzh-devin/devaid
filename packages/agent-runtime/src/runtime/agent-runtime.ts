@@ -25,6 +25,7 @@ import {
 } from '@earendil-works/pi-agent-core'
 import {
   EventStream,
+  getSupportedThinkingLevels,
   type AssistantMessage,
   type TextContent,
   type UserMessage,
@@ -455,6 +456,14 @@ export class AgentRuntime {
         opened.config.providerId,
         opened.config.modelId,
       )
+      const thinkingLevel = input?.thinkingLevel ?? 'off'
+      if (!getSupportedThinkingLevels(model).includes(thinkingLevel)) {
+        throw new AgentRuntimeError(
+          'THINKING_LEVEL_UNSUPPORTED',
+          '当前模型不支持所选推理强度。',
+          400,
+        )
+      }
       operation.controller.signal.throwIfAborted()
       const resolved = input
         ? await this.capabilities?.resolve(opened.metadata.cwd, input)
@@ -626,7 +635,7 @@ export class AgentRuntime {
           messages: context.messages,
           model,
           systemPrompt,
-          thinkingLevel: 'off',
+          thinkingLevel,
           tools,
         },
         convertToLlm: convertAttachmentMessagesToLlm,
