@@ -63,7 +63,7 @@ export const listWorkspaces = () => request<WorkspaceVo[]>('/api/workspaces')
 /** 请求本地 Server 打开系统目录选择器，取消时返回 null。 */
 export const selectWorkspace = () =>
   request<WorkspaceVo | null>('/api/workspaces/select', {
-    headers: { 'x-devaid-request': 'workspace-picker' },
+    headers: { 'x-oh-my-harness-request': 'workspace-picker' },
     method: 'POST',
   })
 
@@ -91,15 +91,15 @@ export const readWorkspaceFile = (
   return request<WorkspaceFileVo>(
     `/api/workspaces/${encodeURIComponent(workspaceId)}/files/content?${query}`,
     {
-      headers: { 'x-devaid-request': 'workspace-file-preview' },
+      headers: { 'x-oh-my-harness-request': 'workspace-file-preview' },
       signal,
     },
   )
 }
 
-const FILE_EDITOR_HEADERS = { 'x-devaid-request': 'file-editor' }
+const FILE_EDITOR_HEADERS = { 'x-oh-my-harness-request': 'file-editor' }
 
-/** 查询运行 Devaid Server 的电脑所使用的默认文件编辑器。 */
+/** 查询运行 oh-my-harness Server 的电脑所使用的默认文件编辑器。 */
 export const getFileEditorPreference = () =>
   request<FileEditorPreferenceVo>('/api/workspaces/file-editor', {
     headers: FILE_EDITOR_HEADERS,

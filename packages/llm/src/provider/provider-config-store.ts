@@ -74,7 +74,8 @@ export class FileProviderConfigStore {
   private mutation = Promise.resolve()
 
   constructor(
-    dataDirectory = process.env.DEVAID_DATA_DIR ?? getDefaultDataDirectory(),
+    dataDirectory = process.env.OH_MY_HARNESS_DATA_DIR ??
+      getDefaultDataDirectory(),
   ) {
     this.filePath = join(dataDirectory, 'provider-config.json')
   }

@@ -1,4 +1,4 @@
-import type { BashOutcome } from '@devaid/agent-tools'
+import type { BashOutcome } from '@oh-my-harness/agent-tools'
 
 /** 只接受 Bash 工具定义的稳定结果字段，避免把任意 details 透传给客户端。 */
 export function safeBashOutcome(value: unknown): BashOutcome | undefined {

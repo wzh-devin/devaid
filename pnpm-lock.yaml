@@ -10,24 +10,24 @@ importers:
 
   apps/server:
     dependencies:
-      '@devaid/agent-policy':
-        specifier: workspace:*
-        version: link:../../packages/agent-policy
-      '@devaid/agent-runtime':
-        specifier: workspace:*
-        version: link:../../packages/agent-runtime
-      '@devaid/agent-tools':
-        specifier: workspace:*
-        version: link:../../packages/agent-tools
-      '@devaid/llm':
-        specifier: workspace:*
-        version: link:../../packages/llm
       '@earendil-works/pi-agent-core':
         specifier: 0.84.3
         version: 0.84.3(ws@8.21.3)(zod@4.4.3)
       '@hono/node-server':
         specifier: 2.1.1
         version: 2.1.1(hono@4.13.5)
+      '@oh-my-harness/agent-policy':
+        specifier: workspace:*
+        version: link:../../packages/agent-policy
+      '@oh-my-harness/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
+      '@oh-my-harness/agent-tools':
+        specifier: workspace:*
+        version: link:../../packages/agent-tools
+      '@oh-my-harness/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       hono:
         specifier: 4.13.5
         version: 4.13.5
@@ -159,21 +159,21 @@ importers:
 
   packages/agent-runtime:
     dependencies:
-      '@devaid/agent-policy':
-        specifier: workspace:*
-        version: link:../agent-policy
-      '@devaid/agent-tools':
-        specifier: workspace:*
-        version: link:../agent-tools
-      '@devaid/llm':
-        specifier: workspace:*
-        version: link:../llm
       '@earendil-works/pi-agent-core':
         specifier: 0.84.3
         version: 0.84.3(ws@8.21.3)(zod@4.4.3)
       '@earendil-works/pi-ai':
         specifier: 0.84.3
         version: 0.84.3(ws@8.21.3)(zod@4.4.3)
+      '@oh-my-harness/agent-policy':
+        specifier: workspace:*
+        version: link:../agent-policy
+      '@oh-my-harness/agent-tools':
+        specifier: workspace:*
+        version: link:../agent-tools
+      '@oh-my-harness/llm':
+        specifier: workspace:*
+        version: link:../llm
     devDependencies:
       '@types/node':
         specifier: ^24.13.3
@@ -190,12 +190,12 @@ importers:
 
   packages/agent-tools:
     dependencies:
-      '@devaid/agent-policy':
-        specifier: workspace:*
-        version: link:../agent-policy
       '@earendil-works/pi-agent-core':
         specifier: 0.84.3
         version: 0.84.3(ws@8.21.3)(zod@4.4.3)
+      '@oh-my-harness/agent-policy':
+        specifier: workspace:*
+        version: link:../agent-policy
     devDependencies:
       '@types/node':
         specifier: ^24.13.3

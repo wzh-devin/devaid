@@ -7,7 +7,7 @@ import { clampSidebarWidth } from '../utils/sidebar-width.ts'
 import { SidebarContents } from './SidebarContents.tsx'
 import { SidebarResizeHandle } from './SidebarResizeHandle.tsx'
 
-const DEFAULT_SIDEBAR_WIDTH = 240
+const DEFAULT_SIDEBAR_WIDTH = 288
 
 /** 渲染品牌、聊天导航和设置入口，桌面与移动侧栏共享内容。 */
 export function ChatSidebar({

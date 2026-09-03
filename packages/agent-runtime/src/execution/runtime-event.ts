@@ -1,4 +1,4 @@
-import type { BashOutcome, TodoItem } from '@devaid/agent-tools'
+import type { BashOutcome, TodoItem } from '@oh-my-harness/agent-tools'
 
 export type AgentRuntimeEvent =
   | { sessionId: string; type: 'start' }

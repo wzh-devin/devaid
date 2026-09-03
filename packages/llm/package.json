@@ -1,5 +1,5 @@
 {
-  "name": "@devaid/llm",
+  "name": "@oh-my-harness/llm",
   "private": true,
   "version": "0.0.0",
   "type": "module",

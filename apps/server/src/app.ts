@@ -1,5 +1,5 @@
-import { ToolPolicy } from '@devaid/agent-policy'
-import { AgentRuntime } from '@devaid/agent-runtime'
+import { ToolPolicy } from '@oh-my-harness/agent-policy'
+import { AgentRuntime } from '@oh-my-harness/agent-runtime'
 import {
   createProviderModels,
   FileCredentialStore,
@@ -7,7 +7,7 @@ import {
   getDefaultDataDirectory,
   ModelService,
   OAuthSessionService,
-} from '@devaid/llm'
+} from '@oh-my-harness/llm'
 import { Hono } from 'hono'
 
 import { createJsonlSessionRepository } from './infrastructure/session/jsonl-session.ts'
@@ -21,14 +21,15 @@ export interface CreateAppOptions {
   models?: ModelService
 }
 
-export type DevaidApp = Hono & { close(): Promise<void> }
+export type OhMyHarnessApp = Hono & { close(): Promise<void> }
 
-/** 创建 Devaid 本地后端业务应用。 */
+/** 创建 oh-my-harness 本地后端业务应用。 */
 export async function createApp(
-  dataDirectory = process.env.DEVAID_DATA_DIR ?? getDefaultDataDirectory(),
+  dataDirectory = process.env.OH_MY_HARNESS_DATA_DIR ??
+    getDefaultDataDirectory(),
   options: CreateAppOptions = {},
 ) {
-  const app = new Hono() as DevaidApp
+  const app = new Hono() as OhMyHarnessApp
   let models = options.models
   if (!models) {
     const credentials = new FileCredentialStore(dataDirectory)

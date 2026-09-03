@@ -1,6 +1,7 @@
 @media (min-width: 769px) {
   .chat-layout--thread > [data-slot='sidebar'] {
     border-inline-end: 1px solid var(--border);
+    box-shadow: none;
   }
 
   .chat-layout--thread .app-layout__aside {

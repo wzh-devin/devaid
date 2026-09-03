@@ -1,11 +1,14 @@
-import { isToolPermission, type ApprovalDecision } from '@devaid/agent-policy'
+import {
+  isToolPermission,
+  type ApprovalDecision,
+} from '@oh-my-harness/agent-policy'
 import {
   AgentRuntimeError,
   type AgentRun,
   type AgentRunAttachment,
   type AgentRuntime,
   type ModelThinkingLevel,
-} from '@devaid/agent-runtime'
+} from '@oh-my-harness/agent-runtime'
 import type { Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
 

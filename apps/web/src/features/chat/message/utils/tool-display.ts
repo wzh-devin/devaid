@@ -198,7 +198,7 @@ export const getToolApprovalPresentation = (
 
     return {
       label: '运行命令',
-      question: '是否允许 Devaid 运行以下命令？',
+      question: '是否允许 oh-my-harness 运行以下命令？',
       target:
         typeof command === 'string' && command
           ? command
@@ -211,7 +211,7 @@ export const getToolApprovalPresentation = (
     const isRead = tool.kind === 'read'
     return {
       label: isRead ? '读取文件' : '编辑文件',
-      question: `是否允许 Devaid ${isRead ? '读取' : '编辑'}以下文件？`,
+      question: `是否允许 oh-my-harness ${isRead ? '读取' : '编辑'}以下文件？`,
       target: typeof path === 'string' ? path : tool.approval?.description,
     }
   }

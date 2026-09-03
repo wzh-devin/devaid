@@ -30,4 +30,4 @@ export type {
   ApprovalDecision,
   PendingToolApproval,
   ToolPermission,
-} from '@devaid/agent-policy'
+} from '@oh-my-harness/agent-policy'

@@ -8,14 +8,14 @@ import {
   type ApprovalResolution,
   type PendingToolApproval,
   type ToolPermission,
-} from '@devaid/agent-policy'
+} from '@oh-my-harness/agent-policy'
 import {
   createAttachmentTool,
   createSkillResourceTool,
   createTodoWriteTool,
   createWorkspaceTools,
-} from '@devaid/agent-tools'
-import { ModelServiceError, type ModelService } from '@devaid/llm'
+} from '@oh-my-harness/agent-tools'
+import { ModelServiceError, type ModelService } from '@oh-my-harness/llm'
 import {
   Agent,
   buildSessionContext,

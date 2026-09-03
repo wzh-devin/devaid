@@ -1,5 +1,8 @@
-import { WorkspaceExecutionEnv } from '@devaid/agent-tools'
-import { AgentRuntimeError, type AgentRuntime } from '@devaid/agent-runtime'
+import { WorkspaceExecutionEnv } from '@oh-my-harness/agent-tools'
+import {
+  AgentRuntimeError,
+  type AgentRuntime,
+} from '@oh-my-harness/agent-runtime'
 import type { Context } from 'hono'
 
 import type {
@@ -154,7 +157,8 @@ function fileOpenErrorResponse(context: Context, code: string) {
 }
 
 function requireFileEditorRequest(context: Context) {
-  if (context.req.header('x-devaid-request') === 'file-editor') return true
+  if (context.req.header('x-oh-my-harness-request') === 'file-editor')
+    return true
   return context.json(
     { code: 'FILE_EDITOR_FORBIDDEN', message: '本地应用请求无效。' },
     403,
@@ -212,7 +216,10 @@ export function createWorkspaceController(
     readFile: async (context: Context) => {
       context.header('cache-control', 'no-store')
       context.header('x-content-type-options', 'nosniff')
-      if (context.req.header('x-devaid-request') !== 'workspace-file-preview') {
+      if (
+        context.req.header('x-oh-my-harness-request') !==
+        'workspace-file-preview'
+      ) {
         return context.json(
           {
             code: 'FILE_PREVIEW_FORBIDDEN',
@@ -420,7 +427,9 @@ export function createWorkspaceController(
       }
     },
     select: async (context: Context) => {
-      if (context.req.header('x-devaid-request') !== 'workspace-picker') {
+      if (
+        context.req.header('x-oh-my-harness-request') !== 'workspace-picker'
+      ) {
         return context.json(
           {
             code: 'WORKSPACE_PICKER_FORBIDDEN',

@@ -3,7 +3,7 @@ import type {
   OAuthSessionInputRequestDto,
   OAuthSessionStatusResponseDto,
 } from '../../dto/llm/oauth-dto.ts'
-import type { OAuthSessionService } from '@devaid/llm'
+import type { OAuthSessionService } from '@oh-my-harness/llm'
 import type { Context } from 'hono'
 
 /** 创建 OAuth 会话 HTTP Controller。 */

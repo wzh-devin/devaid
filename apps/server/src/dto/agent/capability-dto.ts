@@ -2,7 +2,7 @@ import type {
   AgentCapabilityCommand,
   AgentCapabilityDiagnostic,
   AgentCapabilitySkill,
-} from '@devaid/agent-runtime'
+} from '@oh-my-harness/agent-runtime'
 
 export interface AgentCapabilityCatalogDto {
   commands: AgentCapabilityCommand[]

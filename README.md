@@ -1,11 +1,11 @@
-# Devaid
+# oh-my-harness
 
-Devaid 是基于 pnpm workspace 的 AI 开发工作台。当前仓库包含浏览器端聊天应用，以及供应用直接消费的本地 UI Pro vendor 包。
+oh-my-harness 是基于 pnpm workspace 的 AI 开发工作台。当前仓库包含浏览器端聊天应用，以及供应用直接消费的本地 UI Pro vendor 包。
 
 ## Workspace
 
 ```text
-devaid/
+oh-my-harness/
 ├── apps/
 │   └── web/
 │       └── src/

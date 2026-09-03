@@ -1,8 +1,8 @@
-import type { ToolPermission } from '@devaid/agent-policy'
+import type { ToolPermission } from '@oh-my-harness/agent-policy'
 import type {
   AgentRunAttachment,
   ModelThinkingLevel,
-} from '@devaid/agent-runtime'
+} from '@oh-my-harness/agent-runtime'
 
 export interface BashOutcomeDto {
   exitCode: number | null

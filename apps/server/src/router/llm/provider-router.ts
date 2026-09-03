@@ -1,4 +1,4 @@
-import type { ModelService, OAuthSessionService } from '@devaid/llm'
+import type { ModelService, OAuthSessionService } from '@oh-my-harness/llm'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 

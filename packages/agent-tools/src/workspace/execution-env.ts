@@ -135,7 +135,7 @@ export class WorkspaceExecutionEnv extends NodeExecutionEnv {
     if (!created.ok) return created
     const temp = resolve(
       parent,
-      `.${basename(target)}.devaid-${randomUUID()}.tmp`,
+      `.${basename(target)}.oh-my-harness-${randomUUID()}.tmp`,
     )
     const written = await super.writeFile(temp, content, abortSignal)
     if (!written.ok) return written

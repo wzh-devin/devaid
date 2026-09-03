@@ -1,4 +1,4 @@
-import type { AgentRuntime } from '@devaid/agent-runtime'
+import type { AgentRuntime } from '@oh-my-harness/agent-runtime'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 

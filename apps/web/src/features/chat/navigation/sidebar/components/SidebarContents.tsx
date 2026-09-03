@@ -212,8 +212,8 @@ export function SidebarContents({
             </Tooltip>
           ) : (
             <>
-              <span className="text-xl leading-none font-semibold tracking-tight text-foreground">
-                Devaid
+              <span className="min-w-0 truncate whitespace-nowrap text-xl leading-none font-semibold tracking-tight text-foreground">
+                oh-my-harness
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -433,7 +433,7 @@ export function SidebarContents({
       {workspaceToDelete ? (
         <DestructiveActionDialog
           confirmLabel="删除工作区"
-          description={`将从 Devaid 中删除“${workspaceToDelete.label}”及其全部普通、归档对话。本地工作区目录和源码不会被删除，此操作无法撤销会话记录。`}
+          description={`将从 oh-my-harness 中删除“${workspaceToDelete.label}”及其全部普通、归档对话。本地工作区目录和源码不会被删除，此操作无法撤销会话记录。`}
           error={workspaceDeleteError}
           isPending={isDeletingWorkspace}
           title="删除工作区"

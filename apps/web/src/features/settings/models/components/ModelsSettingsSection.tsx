@@ -252,7 +252,7 @@ export function ModelsSettingsSection() {
     if (selectedLoginMethod !== 'device_code') {
       popup.current = window.open(
         '',
-        'devaid-oauth',
+        'oh-my-harness-oauth',
         'popup,width=560,height=760',
       )
     }
@@ -307,7 +307,7 @@ export function ModelsSettingsSection() {
         ) {
           popup.current = window.open(
             '',
-            'devaid-oauth',
+            'oh-my-harness-oauth',
             'popup,width=560,height=760',
           )
         }

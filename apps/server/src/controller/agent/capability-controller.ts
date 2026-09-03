@@ -1,4 +1,4 @@
-import type { AgentRuntime } from '@devaid/agent-runtime'
+import type { AgentRuntime } from '@oh-my-harness/agent-runtime'
 import type { Context } from 'hono'
 
 import type { AgentCapabilityCatalogDto } from '../../dto/agent/capability-dto.ts'

@@ -1,5 +1,5 @@
 {
-  "name": "@devaid/agent-tools",
+  "name": "@oh-my-harness/agent-tools",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,7 +20,7 @@
     "format:check": "prettier --check src package.json tsconfig.json tsconfig.build.json"
   },
   "dependencies": {
-    "@devaid/agent-policy": "workspace:*",
+    "@oh-my-harness/agent-policy": "workspace:*",
     "@earendil-works/pi-agent-core": "0.84.3"
   },
   "devDependencies": {

@@ -3,7 +3,7 @@ import type {
   AgentSessionDetail,
   AgentSessionInfo,
   AgentSessionMessagePage,
-} from '@devaid/agent-runtime'
+} from '@oh-my-harness/agent-runtime'
 import type { Context } from 'hono'
 
 import type {

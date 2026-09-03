@@ -10,7 +10,7 @@ import type {
   SessionStats,
 } from '@earendil-works/pi-agent-core'
 import { SessionError } from '@earendil-works/pi-agent-core'
-import { parseTodoWriteInput, type TodoItem } from '@devaid/agent-tools'
+import { parseTodoWriteInput, type TodoItem } from '@oh-my-harness/agent-tools'
 import type {
   AssistantMessage,
   ToolResultMessage,
@@ -92,7 +92,7 @@ export interface AgentSessionTool {
   errorText?: string
   input: Record<string, unknown>
   kind: 'command' | 'edit' | 'read' | 'skill' | 'tool'
-  outcome?: import('@devaid/agent-tools').BashOutcome
+  outcome?: import('@oh-my-harness/agent-tools').BashOutcome
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
   toolCallId: string

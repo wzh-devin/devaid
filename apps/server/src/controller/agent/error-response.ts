@@ -1,5 +1,5 @@
-import { AgentRuntimeError } from '@devaid/agent-runtime'
-import { ModelServiceError } from '@devaid/llm'
+import { AgentRuntimeError } from '@oh-my-harness/agent-runtime'
+import { ModelServiceError } from '@oh-my-harness/llm'
 import type { Context } from 'hono'
 
 /** 将核心错误映射为不泄露内部状态的 HTTP 响应。 */

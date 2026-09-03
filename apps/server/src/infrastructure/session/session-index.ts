@@ -2,7 +2,7 @@ import {
   SESSION_CUSTOM_TYPE,
   type AgentSessionInfo,
   type AgentSessionProjection,
-} from '@devaid/agent-runtime'
+} from '@oh-my-harness/agent-runtime'
 import {
   JsonlSessionRepo,
   type JsonlSessionMetadata,

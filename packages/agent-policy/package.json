@@ -1,5 +1,5 @@
 {
-  "name": "@devaid/agent-policy",
+  "name": "@oh-my-harness/agent-policy",
   "private": true,
   "version": "0.0.0",
   "type": "module",

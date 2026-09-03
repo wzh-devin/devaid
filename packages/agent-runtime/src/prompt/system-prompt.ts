@@ -1,4 +1,4 @@
-import type { TodoItem } from '@devaid/agent-tools'
+import type { TodoItem } from '@oh-my-harness/agent-tools'
 
 import type { LoadedSkill } from '../capability/capability-service.ts'
 

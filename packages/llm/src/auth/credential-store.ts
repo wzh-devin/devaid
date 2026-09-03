@@ -67,9 +67,9 @@ function parseDocument(source: string): CredentialDocument {
   return { credentials: credentials as Record<string, Credential>, version: 1 }
 }
 
-/** 返回当前用户统一的 Devaid 本地数据目录。 */
+/** 返回当前用户统一的 oh-my-harness 本地数据目录。 */
 export function getDefaultDataDirectory() {
-  return join(homedir(), '.devaid')
+  return join(homedir(), '.oh-my-harness')
 }
 
 /** LLM 包使用的版本化、本地原子文件凭证存储。 */
@@ -78,7 +78,8 @@ export class FileCredentialStore implements CredentialStore {
   private mutation = Promise.resolve()
 
   constructor(
-    dataDirectory = process.env.DEVAID_DATA_DIR ?? getDefaultDataDirectory(),
+    dataDirectory = process.env.OH_MY_HARNESS_DATA_DIR ??
+      getDefaultDataDirectory(),
   ) {
     this.filePath = join(dataDirectory, 'credentials.json')
   }

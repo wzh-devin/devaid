@@ -1,5 +1,5 @@
-import type { AgentRuntime } from '@devaid/agent-runtime'
-import type { ModelService, OAuthSessionService } from '@devaid/llm'
+import type { AgentRuntime } from '@oh-my-harness/agent-runtime'
+import type { ModelService, OAuthSessionService } from '@oh-my-harness/llm'
 import { Hono } from 'hono'
 
 import { createAgentRunRouter } from './agent/run-router.ts'
@@ -13,7 +13,7 @@ import { createWorkspaceRouter } from './workspace/workspace-router.ts'
 import type { FileEditorService } from '../infrastructure/workspace/file-editor-service.ts'
 import type { WorkspaceStore } from '../infrastructure/workspace/workspace-store.ts'
 
-/** 组合 Devaid 的全部 HTTP API 路由。 */
+/** 组合 oh-my-harness 的全部 HTTP API 路由。 */
 export function createApiRouter(
   models: ModelService,
   oauth: OAuthSessionService,

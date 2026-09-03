@@ -2,8 +2,8 @@ import type {
   ApprovalResolution,
   PendingToolApproval,
   ToolPermission,
-} from '@devaid/agent-policy'
-import { ToolPolicy, ToolPolicyError } from '@devaid/agent-policy'
+} from '@oh-my-harness/agent-policy'
+import { ToolPolicy, ToolPolicyError } from '@oh-my-harness/agent-policy'
 import {
   type AgentHarnessTool,
   type AgentTool,

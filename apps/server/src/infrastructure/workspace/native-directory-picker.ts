@@ -35,7 +35,10 @@ export async function selectNativeWorkspaceDirectory(
   try {
     const { stdout } = await (options.run ?? runCommand)(
       'osascript',
-      ['-e', 'POSIX path of (choose folder with prompt "选择 Devaid 工作区")'],
+      [
+        '-e',
+        'POSIX path of (choose folder with prompt "选择 oh-my-harness 工作区")',
+      ],
       { encoding: 'utf8', timeout: 5 * 60 * 1000 },
     )
     const path = stdout.trim()

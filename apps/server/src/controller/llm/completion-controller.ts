@@ -1,4 +1,4 @@
-import { ModelServiceError, type ModelService } from '@devaid/llm'
+import { ModelServiceError, type ModelService } from '@oh-my-harness/llm'
 import type { Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
 

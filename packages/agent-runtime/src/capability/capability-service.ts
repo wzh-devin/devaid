@@ -142,7 +142,7 @@ const preferHigherPriority = <
   )
 }
 
-/** 从 Devaid 用户目录加载 Skills，并从用户及项目目录加载命令。 */
+/** 从 oh-my-harness 用户目录加载 Skills，并从用户及项目目录加载命令。 */
 export class AgentCapabilityService {
   // ponytail: 5s TTL keeps discovery cheap; replace with file watching only if live edits require it.
   private readonly cache = new Map<

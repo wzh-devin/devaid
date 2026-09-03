@@ -2,7 +2,7 @@ import {
   ModelServiceError,
   type ModelService,
   type OAuthSessionService,
-} from '@devaid/llm'
+} from '@oh-my-harness/llm'
 import type { Context } from 'hono'
 
 import type {

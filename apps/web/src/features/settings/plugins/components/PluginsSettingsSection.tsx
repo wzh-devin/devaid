@@ -7,7 +7,7 @@ import { SettingsItemCard } from '../../shared/components/SettingsItemCard.tsx'
 import { PluginListPanel } from './PluginListPanel.tsx'
 
 const skillSourceLabels = {
-  user: 'Devaid',
+  user: 'oh-my-harness',
 } as const
 
 interface PluginsSettingsSectionProps {
