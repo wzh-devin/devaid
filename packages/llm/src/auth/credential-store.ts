@@ -69,7 +69,7 @@ function parseDocument(source: string): CredentialDocument {
 
 /** 返回当前用户统一的 oh-my-harness 本地数据目录。 */
 export function getDefaultDataDirectory() {
-  return join(homedir(), '.oh-my-harness')
+  return join(homedir(), '.omh')
 }
 
 /** LLM 包使用的版本化、本地原子文件凭证存储。 */
