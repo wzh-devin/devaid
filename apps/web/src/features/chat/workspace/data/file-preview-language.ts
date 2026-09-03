@@ -65,6 +65,7 @@ export const getWorkspaceFileReference = (value: string) => {
 
   return {
     label: path.slice(path.lastIndexOf('.') + 1).toUpperCase(),
+    name: path.slice(path.lastIndexOf('/') + 1),
     path,
   }
 }

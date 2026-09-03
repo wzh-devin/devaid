@@ -1,12 +1,63 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ElementType } from 'react'
 import { CodeBlock } from '@agile-avocation/ui-pro/code-block'
 import { Markdown, markdownVariants } from '@agile-avocation/ui-pro/markdown'
+import {
+  AtomIcon,
+  BracesIcon,
+  CodeXmlIcon,
+  DatabaseIcon,
+  FileTextIcon,
+  PaletteIcon,
+  SquareTerminalIcon,
+} from 'lucide-react'
 import {
   getWorkspaceFileReference,
   useChatWorkspace,
 } from '../../workspace/index.ts'
 
 const markdownSlots = markdownVariants()
+const FILE_TYPE_ICONS: Readonly<Partial<Record<string, ElementType>>> = {
+  BASH: SquareTerminalIcon,
+  CSS: PaletteIcon,
+  HTML: CodeXmlIcon,
+  HTM: CodeXmlIcon,
+  JSON: BracesIcon,
+  JSONC: BracesIcon,
+  JSONL: BracesIcon,
+  JSX: AtomIcon,
+  LESS: PaletteIcon,
+  MD: FileTextIcon,
+  MDX: FileTextIcon,
+  SCSS: PaletteIcon,
+  SH: SquareTerminalIcon,
+  SQL: DatabaseIcon,
+  SVELTE: CodeXmlIcon,
+  TOML: BracesIcon,
+  TSX: AtomIcon,
+  VUE: CodeXmlIcon,
+  XML: CodeXmlIcon,
+  YAML: BracesIcon,
+  YML: BracesIcon,
+  ZSH: SquareTerminalIcon,
+}
+
+/** 按扩展名渲染可辨识的文件类型图标。 */
+const FileReferenceIcon = ({ label }: { label: string }) => {
+  const FileIcon = FILE_TYPE_ICONS[label]
+  if (FileIcon) {
+    return <FileIcon aria-hidden="true" className="size-4 shrink-0" />
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex size-4 shrink-0 items-center justify-center rounded-[3px] bg-accent text-[8px] leading-none font-bold text-accent-foreground"
+    >
+      {label.slice(0, 2)}
+    </span>
+  )
+}
+
 const LOCALIZED_COMPONENTS = {
   code: function LocalizedCode({ children, className, node, ...props }) {
     const { onFileOpen, selectedWorkspaceId } = useChatWorkspace()
@@ -19,26 +70,14 @@ const LOCALIZED_COMPONENTS = {
       if (fileReference && selectedWorkspaceId && onFileOpen) {
         return (
           <button
-            aria-label={`打开文件 ${fileReference.path}`}
-            className="inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded align-middle font-sans text-sm text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            aria-label={`使用本地应用打开 ${fileReference.path}`}
+            className="inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded px-0.5 align-middle font-sans text-sm text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             title={fileReference.path}
             type="button"
             onClick={() => onFileOpen(fileReference.path)}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' && event.key !== ' ') return
-              event.preventDefault()
-              onFileOpen(fileReference.path)
-            }}
           >
-            <span
-              aria-hidden="true"
-              className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-accent/10 px-0.5 text-[9px] leading-none font-semibold"
-            >
-              {fileReference.label}
-            </span>
-            <span className="min-w-0 break-all underline decoration-accent/40 underline-offset-2">
-              {fileReference.path}
-            </span>
+            <FileReferenceIcon label={fileReference.label} />
+            <span className="min-w-0 break-all">{fileReference.name}</span>
           </button>
         )
       }
