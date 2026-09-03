@@ -1,7 +1,4 @@
-export {
-  createWorkspaceTools,
-  WORKSPACE_TOOLS_SYSTEM_PROMPT,
-} from './workspace/toolset.ts'
+export { createWorkspaceTools } from './workspace/toolset.ts'
 export {
   createSkillResourceTool,
   type SkillResourceRoot,

@@ -18,9 +18,6 @@ import { createReadTool } from '../tools/read.ts'
 import { createWriteTool } from '../tools/write.ts'
 import { WorkspaceExecutionEnv } from './execution-env.ts'
 
-export const WORKSPACE_TOOLS_SYSTEM_PROMPT =
-  'File tools are limited to workspace-relative paths. The bash tool runs a complete Bash command from the workspace only after user approval. Put the full command in command, including pipes or redirections when needed, and inspect its exit marker before continuing.'
-
 interface WorkspaceToolsOptions {
   cwd: string
   onApprovalRequested(approval: PendingToolApproval): Promise<void>

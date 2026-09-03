@@ -1,5 +1,6 @@
 export { AgentRuntime } from './runtime/agent-runtime.ts'
 export { AgentRuntimeError } from './error/agent-runtime-error.ts'
+export { SESSION_CUSTOM_TYPE } from './session/session-custom-type.ts'
 export type { AgentRun, AgentRuntimeEvent } from './execution/runtime-event.ts'
 export type {
   AgentMessageAttachment,

@@ -1,6 +1,7 @@
-import type {
-  AgentSessionInfo,
-  AgentSessionProjection,
+import {
+  SESSION_CUSTOM_TYPE,
+  type AgentSessionInfo,
+  type AgentSessionProjection,
 } from '@devaid/agent-runtime'
 import {
   JsonlSessionRepo,
@@ -12,7 +13,6 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite'
 
 const APPLICATION_ID = 0x44564149 // DVAI
 const SCHEMA_VERSION = 2
-const ARCHIVE_ENTRY_TYPE = 'devaid_session_archived'
 const DATABASE_NAME = 'session-index.sqlite'
 const COLUMNS = [
   'id',
@@ -528,7 +528,7 @@ export class SessionIndex implements AgentSessionProjection {
       } else if (
         value.kind === 'entry' &&
         value.type === 'custom' &&
-        value.customType === ARCHIVE_ENTRY_TYPE &&
+        value.customType === SESSION_CUSTOM_TYPE.sessionArchiveChanged &&
         (value.lane === undefined || value.lane === 'main')
       ) {
         next.archived = archiveDataState(value.data)
@@ -552,7 +552,7 @@ export class SessionIndex implements AgentSessionProjection {
         type: 'model_change',
       }),
       session.findEntryOnBranch({
-        customType: ARCHIVE_ENTRY_TYPE,
+        customType: SESSION_CUSTOM_TYPE.sessionArchiveChanged,
         order: 'newestFirst',
         type: 'custom',
       }),

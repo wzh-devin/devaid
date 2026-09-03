@@ -23,6 +23,7 @@ import type {
   AgentMessageAttachment,
   AgentMessageContextItem,
 } from '../execution/run-input.ts'
+import { SESSION_CUSTOM_TYPE } from './session-custom-type.ts'
 
 export interface AgentSessionModelConfig {
   modelId: string
@@ -117,7 +118,6 @@ export interface OpenAgentSession {
 
 const sessionIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const archiveEntryType = 'devaid_session_archived'
 
 function readHeaderConfig(
   metadata: AgentSessionMetadata,
@@ -176,7 +176,7 @@ function archiveState(entry: Entry | undefined) {
   if (entry === undefined) return false
   if (
     entry.type !== 'custom' ||
-    entry.customType !== archiveEntryType ||
+    entry.customType !== SESSION_CUSTOM_TYPE.sessionArchiveChanged ||
     !entry.data ||
     typeof entry.data !== 'object' ||
     Array.isArray(entry.data) ||
@@ -277,7 +277,10 @@ function toMessage(
   toolResults: ReadonlyMap<string, ToolResultMessage>,
 ) {
   const { message } = entry
-  if (message.role === 'custom' && message.customType === 'devaid_user_input') {
+  if (
+    message.role === 'custom' &&
+    message.customType === SESSION_CUSTOM_TYPE.userInput
+  ) {
     const details = structuredMessageDetails(message.details)
     if (!details) return undefined
     return {
@@ -439,7 +442,7 @@ export class AgentSessionService {
           type: 'model_change',
         }),
         session.findEntryOnBranch({
-          customType: archiveEntryType,
+          customType: SESSION_CUSTOM_TYPE.sessionArchiveChanged,
           order: 'newestFirst',
           type: 'custom',
         }),
@@ -543,7 +546,10 @@ export class AgentSessionService {
   async archive(id: string, archived: boolean) {
     const opened = await this.openSession(id)
     try {
-      await opened.session.appendCustomEntry(archiveEntryType, { archived })
+      await opened.session.appendCustomEntry(
+        SESSION_CUSTOM_TYPE.sessionArchiveChanged,
+        { archived },
+      )
       const info = toInfo(
         opened.metadata,
         opened.config,
@@ -616,7 +622,7 @@ export class AgentSessionService {
       if (
         entry?.type !== 'message' ||
         entry.message.role !== 'custom' ||
-        entry.message.customType !== 'devaid_user_input' ||
+        entry.message.customType !== SESSION_CUSTOM_TYPE.userInput ||
         !Array.isArray(entry.message.content)
       ) {
         throw new AgentRuntimeError('ATTACHMENT_NOT_FOUND', '附件不存在。', 404)
@@ -686,7 +692,7 @@ export class AgentSessionService {
           type: 'model_change',
         }),
         session.findEntryOnBranch({
-          customType: archiveEntryType,
+          customType: SESSION_CUSTOM_TYPE.sessionArchiveChanged,
           order: 'newestFirst',
           type: 'custom',
         }),

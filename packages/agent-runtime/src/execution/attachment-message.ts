@@ -8,6 +8,7 @@ import type {
   AgentMessageAttachment,
   AgentMessageContextItem,
 } from './run-input.ts'
+import { SESSION_CUSTOM_TYPE } from '../session/session-custom-type.ts'
 
 export interface StoredAttachment extends AgentMessageAttachment {
   content?: string
@@ -47,7 +48,6 @@ export const attachmentManifest = (
         `  <attachment id="${escapeXml(attachment.id)}" name="${escapeXml(attachment.name)}" mime_type="${escapeXml(attachment.mimeType)}" size="${attachment.size}" />`,
     ),
     '</attachments>',
-    'Use view_attachment with an attachment id when its content is needed.',
   ].join('\n'),
   type: 'text' as const,
 })
@@ -150,7 +150,10 @@ export function structuredMessageDetails(
 export const modelSafeAttachmentMessage = (
   message: AgentMessage,
 ): AgentMessage => {
-  if (message.role !== 'custom' || message.customType !== 'devaid_user_input') {
+  if (
+    message.role !== 'custom' ||
+    message.customType !== SESSION_CUSTOM_TYPE.userInput
+  ) {
     return message
   }
   const details = structuredMessageDetails(message.details)
@@ -210,7 +213,7 @@ export const attachmentResourcesFromEntries = (
   for (const message of messages) {
     if (
       message.role !== 'custom' ||
-      message.customType !== 'devaid_user_input'
+      message.customType !== SESSION_CUSTOM_TYPE.userInput
     ) {
       continue
     }
