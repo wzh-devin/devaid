@@ -6,5 +6,6 @@ export type {
   AgentSessionMessageVo,
   AgentSessionToolVo,
   AgentSessionVo,
+  AgentTodoItemVo,
   PendingToolApprovalVo,
 } from './session-vo.ts'

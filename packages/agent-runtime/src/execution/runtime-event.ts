@@ -1,9 +1,10 @@
-import type { BashOutcome } from '@devaid/agent-tools'
+import type { BashOutcome, TodoItem } from '@devaid/agent-tools'
 
 export type AgentRuntimeEvent =
   | { sessionId: string; type: 'start' }
   | { delta: string; type: 'text_delta' }
   | { delta: string; type: 'reasoning_delta' }
+  | { todos: TodoItem[]; type: 'todo_updated' }
   | {
       input: unknown
       toolCallId: string

@@ -2,6 +2,7 @@ import type {
   AgentRunEventVo,
   AgentSessionMessagePageVo,
   AgentSessionVo,
+  AgentTodoItemVo,
   BashOutcomeVo,
   PendingToolApprovalVo,
 } from '../types/index.ts'
@@ -93,6 +94,40 @@ const bashOutcome = (value: unknown): BashOutcomeVo | undefined => {
   } as BashOutcomeVo
 }
 
+const todoItems = (value: unknown): AgentTodoItemVo[] | undefined => {
+  if (!Array.isArray(value) || value.length > 50) return
+  const seen = new Set<string>()
+  let activeCount = 0
+  const todos: AgentTodoItemVo[] = []
+  for (const candidate of value) {
+    if (
+      !candidate ||
+      typeof candidate !== 'object' ||
+      Array.isArray(candidate)
+    ) {
+      return
+    }
+    const item = candidate as Record<string, unknown>
+    const content = typeof item.content === 'string' ? item.content.trim() : ''
+    if (
+      Object.keys(item).length !== 2 ||
+      content !== item.content ||
+      !content ||
+      Array.from(content).length > 200 ||
+      (item.status !== 'pending' &&
+        item.status !== 'in_progress' &&
+        item.status !== 'completed') ||
+      seen.has(content)
+    ) {
+      return
+    }
+    seen.add(content)
+    if (item.status === 'in_progress' && ++activeCount > 1) return
+    todos.push({ content, status: item.status })
+  }
+  return todos
+}
+
 const sessionPath = (sessionId: string) =>
   `/api/agent/sessions/${encodeURIComponent(sessionId)}`
 
@@ -133,6 +168,11 @@ function toRunEvent(value: unknown): AgentRunEventVo {
         return { delta: event.delta, type: event.type }
       }
       break
+    case 'todo_updated': {
+      const todos = todoItems(event.todos)
+      if (todos) return { todos, type: 'todo_updated' }
+      break
+    }
     case 'tool_start':
       if (
         typeof event.toolCallId === 'string' &&

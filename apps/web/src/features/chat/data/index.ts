@@ -20,4 +20,5 @@ export type {
   ChatNavItemId,
   ChatSearchMode,
   ChatThread,
+  ChatTodoItem,
 } from './chat-types.ts'

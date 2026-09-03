@@ -47,7 +47,7 @@ export interface AgentSessionMessageDto {
 export interface AgentSessionToolDto {
   errorText?: string
   input: Record<string, unknown>
-  kind: 'command' | 'edit' | 'read' | 'skill'
+  kind: 'command' | 'edit' | 'read' | 'skill' | 'tool'
   outcome?: {
     exitCode: number | null
     outputExceeded: boolean
@@ -68,6 +68,12 @@ export type AgentSessionMessagePartDto =
 export interface AgentSessionMessagePageDto {
   items: AgentSessionMessageDto[]
   nextCursor: number | null
+  todos?: AgentTodoItemDto[]
+}
+
+export interface AgentTodoItemDto {
+  content: string
+  status: 'completed' | 'in_progress' | 'pending'
 }
 
 export interface AgentSessionMessageAttachmentDto {

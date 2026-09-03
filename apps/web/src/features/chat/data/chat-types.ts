@@ -79,6 +79,11 @@ export interface ChatMessageAttachment {
 
 export type ChatAssistantStatus = 'complete' | 'skeleton' | 'streaming'
 
+export interface ChatTodoItem {
+  content: string
+  status: 'completed' | 'in_progress' | 'pending'
+}
+
 export type ChatMessageActivityPart =
   | { reasoning: ChatMessageReasoning; type: 'reasoning' }
   | { text: string; type: 'text' }
@@ -129,6 +134,7 @@ export interface ChatThread {
   providerId?: string
   searchModeId: string
   title: string
+  todos?: readonly ChatTodoItem[]
   updatedAt: string
   workspaceId?: null | string
   user: {

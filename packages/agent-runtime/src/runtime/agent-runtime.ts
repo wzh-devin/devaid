@@ -12,6 +12,7 @@ import {
 import {
   createAttachmentTool,
   createSkillResourceTool,
+  createTodoWriteTool,
   createWorkspaceTools,
 } from '@devaid/agent-tools'
 import { ModelServiceError, type ModelService } from '@devaid/llm'
@@ -52,6 +53,7 @@ import type {
 } from '../execution/run-input.ts'
 import {
   AgentSessionService,
+  projectCurrentTodos,
   type AgentSessionInfo,
   type AgentSessionProjection,
   type AgentSessionRepository,
@@ -527,6 +529,7 @@ export class AgentRuntime {
       }
       if (entries !== opened.entries) await this.sessions.changed(id)
       const context = buildSessionContext(entries)
+      const currentTodos = projectCurrentTodos(entries, Boolean(incoming))
       if (!incoming) {
         const last = context.messages.at(-1)
         if (
@@ -582,10 +585,23 @@ export class AgentRuntime {
             model.input.includes('image'),
           )
         : undefined
+      const todoTool = createTodoWriteTool(async (todos) => {
+        const snapshot = todos.map((todo) => ({ ...todo }))
+        await opened.session.appendCustomEntry(
+          SESSION_CUSTOM_TYPE.todoUpdated,
+          {
+            schemaVersion: 1,
+            todos: snapshot,
+          },
+        )
+        this.sessions.changed(id)
+        events.push({ todos: snapshot, type: 'todo_updated' })
+      })
       const tools = [
         ...(workspaceTools?.tools ?? []),
         ...(skillResourceTool ? [skillResourceTool] : []),
         ...(attachmentTool ? [attachmentTool] : []),
+        todoTool,
       ]
       if (tools.length) {
         await opened.session.appendCustomEntry(SESSION_CUSTOM_TYPE.runPolicy, {
@@ -595,13 +611,15 @@ export class AgentRuntime {
         })
       }
       const systemPrompt = buildSystemPrompt({
+        currentTodos,
         hasWorkspaceTools: Boolean(workspaceTools),
         skills: resolved?.catalog.skills ?? [],
       })
       const agent = new Agent({
         beforeToolCall: async (call, signal) =>
           call.toolCall.name === 'load_skill_resource' ||
-          call.toolCall.name === 'view_attachment'
+          call.toolCall.name === 'view_attachment' ||
+          call.toolCall.name === 'todo_write'
             ? undefined
             : workspaceTools?.beforeToolCall(call, signal),
         initialState: {

@@ -25,6 +25,13 @@ export type AgentRunEventDto =
   | { delta: string; type: 'text_delta' }
   | { delta: string; type: 'reasoning_delta' }
   | {
+      todos: {
+        content: string
+        status: 'completed' | 'in_progress' | 'pending'
+      }[]
+      type: 'todo_updated'
+    }
+  | {
       input: unknown
       toolCallId: string
       toolName: string

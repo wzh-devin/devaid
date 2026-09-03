@@ -63,7 +63,9 @@ const toolKind = (toolName: string): ChatMessageTool['kind'] =>
       ? 'read'
       : toolName === 'load_skill_resource'
         ? 'skill'
-        : 'edit'
+        : toolName === 'edit' || toolName === 'write'
+          ? 'edit'
+          : 'tool'
 
 const streamingAssistant = (id: string): ChatMessage => ({
   actions: 'full',
@@ -280,8 +282,10 @@ export function useAgentSessions() {
     async (sessionId: string) => {
       const messages = []
       let before: number | undefined
+      let todos: ChatThread['todos']
       do {
         const page = await listAgentSessionMessages(sessionId, before)
+        if (before === undefined) todos = page.todos
         messages.push(...page.items)
         before = page.nextCursor ?? undefined
       } while (before !== undefined)
@@ -293,6 +297,7 @@ export function useAgentSessions() {
         ...thread,
         messages: chatMessages,
         preview: chatMessages.at(-1)?.text ?? thread.preview,
+        todos,
       }))
     },
     [updateThread],
@@ -310,6 +315,7 @@ export function useAgentSessions() {
                 ...next,
                 messages: existing.messages,
                 preview: existing.preview || next.preview,
+                todos: existing.todos,
               }
             : next
         }),
@@ -351,6 +357,11 @@ export function useAgentSessions() {
                 ? { ...current, [sessionId]: undefined }
                 : current,
             )
+          } else if (event.type === 'todo_updated') {
+            updateThread(sessionId, (thread) => ({
+              ...thread,
+              todos: event.todos.length ? event.todos : undefined,
+            }))
           } else if (event.type === 'error') {
             setErrors((current) => ({
               ...current,
@@ -371,6 +382,10 @@ export function useAgentSessions() {
             const updated = {
               ...next,
               messages: existing?.messages ?? [],
+              todos:
+                existing && Object.hasOwn(existing, 'todos')
+                  ? existing.todos
+                  : firstPage.todos,
             }
             return existing
               ? threads.map((thread) =>
@@ -382,7 +397,11 @@ export function useAgentSessions() {
             const messages = toChatMessages(
               firstMessages.sort((left, right) => left.seq - right.seq),
             )
-            updateThread(sessionId, (thread) => ({ ...thread, messages }))
+            updateThread(sessionId, (thread) => ({
+              ...thread,
+              messages,
+              todos: firstPage.todos,
+            }))
           } else {
             await loadMessages(sessionId)
           }
@@ -579,6 +598,9 @@ export function useAgentSessions() {
           streamingAssistant(assistantId),
         ],
         preview,
+        todos: thread.todos?.some((todo) => todo.status !== 'completed')
+          ? thread.todos
+          : undefined,
         updatedAt: '刚刚',
       }))
 
@@ -621,6 +643,12 @@ export function useAgentSessions() {
                       ? appendStreamingReasoning(item, event.delta)
                       : item,
                   ),
+                }))
+                break
+              case 'todo_updated':
+                updateThread(sessionId, (thread) => ({
+                  ...thread,
+                  todos: event.todos.length ? event.todos : undefined,
                 }))
                 break
               case 'tool_start':
@@ -806,6 +834,30 @@ export function useAgentSessions() {
       if (!approval) return
       try {
         await resolveToolApproval(sessionId, approval.approvalId, decision)
+        if (decision === 'approve-once') {
+          const resumedAt = Date.now()
+          updateThread(sessionId, (thread) => ({
+            ...thread,
+            messages: thread.messages.map((message) => {
+              const tool = (message.activity?.tools ?? message.tools)?.find(
+                (candidate) =>
+                  candidate.toolCallId === approval.toolCallId &&
+                  candidate.state === 'requires-action',
+              )
+              return tool
+                ? updateStreamingTool(
+                    message,
+                    {
+                      ...tool,
+                      approval: undefined,
+                      state: 'input-available',
+                    },
+                    resumedAt,
+                  )
+                : message
+            }),
+          }))
+        }
         setPendingApprovals((current) =>
           clearResolvedApproval(current, sessionId, approval.approvalId),
         )
@@ -816,7 +868,7 @@ export function useAgentSessions() {
         }))
       }
     },
-    [pendingApprovals],
+    [pendingApprovals, updateThread],
   )
 
   return {

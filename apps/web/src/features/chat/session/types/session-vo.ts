@@ -25,7 +25,7 @@ export interface AgentSessionMessageVo {
 export interface AgentSessionToolVo {
   errorText?: string
   input: Record<string, unknown>
-  kind: 'command' | 'edit' | 'read' | 'skill'
+  kind: 'command' | 'edit' | 'read' | 'skill' | 'tool'
   outcome?: BashOutcomeVo
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
@@ -48,11 +48,18 @@ export type AgentSessionMessagePartVo =
 export interface AgentSessionMessagePageVo {
   items: AgentSessionMessageVo[]
   nextCursor: number | null
+  todos?: AgentTodoItemVo[]
+}
+
+export interface AgentTodoItemVo {
+  content: string
+  status: 'completed' | 'in_progress' | 'pending'
 }
 
 export type AgentRunEventVo =
   | { sessionId: string; type: 'start' }
   | { delta: string; type: 'text_delta' | 'reasoning_delta' }
+  | { todos: AgentTodoItemVo[]; type: 'todo_updated' }
   | {
       input: unknown
       toolCallId: string

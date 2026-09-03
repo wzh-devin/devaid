@@ -10,6 +10,7 @@ import type {
   SessionStats,
 } from '@earendil-works/pi-agent-core'
 import { SessionError } from '@earendil-works/pi-agent-core'
+import { parseTodoWriteInput, type TodoItem } from '@devaid/agent-tools'
 import type {
   AssistantMessage,
   ToolResultMessage,
@@ -90,7 +91,7 @@ export interface AgentSessionMessage {
 export interface AgentSessionTool {
   errorText?: string
   input: Record<string, unknown>
-  kind: 'command' | 'edit' | 'read' | 'skill'
+  kind: 'command' | 'edit' | 'read' | 'skill' | 'tool'
   outcome?: import('@devaid/agent-tools').BashOutcome
   output?: string
   state: 'input-available' | 'output-available' | 'output-error'
@@ -106,6 +107,7 @@ export type AgentSessionMessagePart =
 export interface AgentSessionMessagePage {
   items: AgentSessionMessage[]
   nextCursor: number | null
+  todos?: TodoItem[]
 }
 
 export interface OpenAgentSession {
@@ -259,7 +261,9 @@ function toSessionTool(
             ? 'skill'
             : toolCall.name === 'view_attachment'
               ? 'read'
-              : 'edit',
+              : toolCall.name === 'edit' || toolCall.name === 'write'
+                ? 'edit'
+                : 'tool',
     ...(!result?.isError && output ? { output } : {}),
     ...(outcome ? { outcome } : {}),
     state: result
@@ -270,6 +274,53 @@ function toSessionTool(
     toolCallId: toolCall.id,
     toolName: toolCall.name,
   }
+}
+
+/** 从主分支事件投影当前开放计划；未完成计划跨用户轮次保留。 */
+export function projectCurrentTodos(
+  entries: readonly Entry[],
+  hasIncomingUser = false,
+) {
+  let latestTodo: { seq: number; todos: TodoItem[] } | undefined
+  let latestUserSeq = hasIncomingUser
+    ? Number.POSITIVE_INFINITY
+    : Number.NEGATIVE_INFINITY
+  for (const entry of entries) {
+    if (
+      entry.type === 'message' &&
+      (entry.message.role === 'user' ||
+        (entry.message.role === 'custom' &&
+          entry.message.customType === SESSION_CUSTOM_TYPE.userInput))
+    ) {
+      latestUserSeq = Math.max(latestUserSeq, entry.seq)
+      continue
+    }
+    if (
+      entry.type !== 'custom' ||
+      entry.customType !== SESSION_CUSTOM_TYPE.todoUpdated ||
+      !entry.data ||
+      typeof entry.data !== 'object' ||
+      Array.isArray(entry.data) ||
+      (entry.data as Record<string, unknown>).schemaVersion !== 1
+    ) {
+      continue
+    }
+    try {
+      const todos = parseTodoWriteInput({
+        todos: (entry.data as Record<string, unknown>).todos,
+      })
+      if (!latestTodo || entry.seq > latestTodo.seq) {
+        latestTodo = { seq: entry.seq, todos }
+      }
+    } catch {
+      // 未知或损坏的投影事件不影响上一份有效 Todo。
+    }
+  }
+  if (!latestTodo?.todos.length) return undefined
+  return latestTodo.todos.some((todo) => todo.status !== 'completed') ||
+    latestTodo.seq > latestUserSeq
+    ? latestTodo.todos
+    : undefined
 }
 
 function toMessage(
@@ -571,28 +622,27 @@ export class AgentSessionService {
     const opened = await this.openSession(id)
     try {
       // ponytail: 首版主分支分页在内存中过滤；100k entries 压测不达标时改用上游 before-cursor/index。
-      const entries = await opened.session.findEntriesOnBranch({
+      const branchEntries = await opened.session.findEntriesOnBranch({
         order: 'newestFirst',
-        type: 'message',
       })
-      const toolResults = new Map(
-        entries.flatMap((entry) => {
-          if (entry.type !== 'message' || entry.message.role !== 'toolResult') {
-            return []
-          }
-          return [[entry.message.toolCallId, entry.message] as const]
-        }),
+      const entries = branchEntries.filter(
+        (entry): entry is Extract<Entry, { type: 'message' }> =>
+          entry.type === 'message',
       )
-      const candidates = entries
-        .filter(
-          (entry) =>
-            entry.type === 'message' &&
-            (options.before === undefined || entry.seq < options.before),
-        )
-        .map((entry) =>
-          toMessage(entry as Extract<Entry, { type: 'message' }>, toolResults),
-        )
-        .filter((message) => message !== undefined)
+      const toolResults = new Map<string, ToolResultMessage>()
+      for (const entry of entries) {
+        if (entry.message.role === 'toolResult') {
+          toolResults.set(entry.message.toolCallId, entry.message)
+        }
+      }
+      const candidates: AgentSessionMessage[] = []
+      for (const entry of entries) {
+        if (options.before !== undefined && entry.seq >= options.before)
+          continue
+        const message = toMessage(entry, toolResults)
+        if (message) candidates.push(message)
+        if (candidates.length > options.limit) break
+      }
       const selected = candidates.slice(0, options.limit)
       return {
         items: selected.toReversed(),
@@ -600,6 +650,11 @@ export class AgentSessionService {
           candidates.length > options.limit
             ? (selected.at(-1)?.seq ?? null)
             : null,
+        ...(options.before === undefined
+          ? {
+              todos: projectCurrentTodos(branchEntries),
+            }
+          : {}),
       }
     } catch (error) {
       return sessionFailure(error)

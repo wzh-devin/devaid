@@ -9,4 +9,10 @@ export {
 } from './tools/attachment.ts'
 export { createBashTool, parseBashInput } from './tools/bash.ts'
 export type { BashInput, BashOutcome } from './tools/bash.ts'
+export {
+  createTodoWriteTool,
+  parseTodoWriteInput,
+  type TodoItem,
+  type TodoStatus,
+} from './tools/todo.ts'
 export { WorkspaceExecutionEnv } from './workspace/execution-env.ts'

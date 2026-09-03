@@ -4,7 +4,7 @@ export type {
   ComposerContextItem,
 } from './composer/index.ts'
 export { SUGGESTED_PROMPTS } from './data/index.ts'
-export type { ChatActivePage, ChatThread } from './data/index.ts'
+export type { ChatActivePage, ChatThread, ChatTodoItem } from './data/index.ts'
 export { ApprovalPrompt, ThreadMessage } from './message/index.ts'
 export type { ApprovalDecision } from './message/index.ts'
 export {
