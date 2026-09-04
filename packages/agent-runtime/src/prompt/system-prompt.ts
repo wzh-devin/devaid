@@ -100,7 +100,7 @@ const buildCurrentTodosPrompt = (todos: readonly TodoItem[] | undefined) => {
         `  <todo status="${todo.status}">${escapePromptXml(todo.content)}</todo>`,
     ),
     '</current_todo_plan>',
-    'If the user continues or extends the same task, resume from the unfinished items and update the complete plan as work advances. If the user starts a different task, replace this plan, or clear it with todo_write({ todos: [] }) when the new task is simple. A restart does not prove that interrupted work completed; check durable results before retrying side effects.',
+    'This plan was recovered by an explicit continuation request. Resume from the unfinished items and update the complete plan as work advances. A restart does not prove that interrupted work completed; check durable results before retrying side effects.',
   ].join('\n')
 }
 

@@ -136,7 +136,7 @@ export function ChatPage({
 
       <div className="shrink-0 bg-background px-4 pt-3 pb-4">
         <div className="mx-auto w-full max-w-[714px]">
-          <TodoPanel todos={thread.todos} />
+          <TodoPanel status={status} todos={thread.todos} />
           {thread.archived ? (
             <div className="border-t border-divider py-2">
               <div className="flex items-center justify-between gap-4">

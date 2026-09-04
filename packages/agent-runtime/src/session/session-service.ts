@@ -276,23 +276,30 @@ function toSessionTool(
   }
 }
 
-/** 从主分支事件投影当前开放计划；未完成计划跨用户轮次保留。 */
-export function projectCurrentTodos(
-  entries: readonly Entry[],
-  hasIncomingUser = false,
-) {
-  let latestTodo: { seq: number; todos: TodoItem[] } | undefined
-  let latestUserSeq = hasIncomingUser
-    ? Number.POSITIVE_INFINITY
-    : Number.NEGATIVE_INFINITY
-  for (const entry of entries) {
-    if (
-      entry.type === 'message' &&
-      (entry.message.role === 'user' ||
+const projectTodoState = (entries: readonly Entry[]) => {
+  let hasNewerTerminalAssistant = false
+  let hasNewerUser = false
+  const newestFirst =
+    entries.length < 2 || entries[0]!.seq > entries.at(-1)!.seq
+  for (
+    let index = newestFirst ? 0 : entries.length - 1;
+    index >= 0 && index < entries.length;
+    index += newestFirst ? 1 : -1
+  ) {
+    const entry = entries[index]!
+    if (entry.type === 'message') {
+      if (
+        entry.message.role === 'user' ||
         (entry.message.role === 'custom' &&
-          entry.message.customType === SESSION_CUSTOM_TYPE.userInput))
-    ) {
-      latestUserSeq = Math.max(latestUserSeq, entry.seq)
+          entry.message.customType === SESSION_CUSTOM_TYPE.userInput)
+      ) {
+        hasNewerUser = true
+      } else if (
+        entry.message.role === 'assistant' &&
+        entry.message.stopReason !== 'toolUse'
+      ) {
+        hasNewerTerminalAssistant = true
+      }
       continue
     }
     if (
@@ -309,18 +316,36 @@ export function projectCurrentTodos(
       const todos = parseTodoWriteInput({
         todos: (entry.data as Record<string, unknown>).todos,
       })
-      if (!latestTodo || entry.seq > latestTodo.seq) {
-        latestTodo = { seq: entry.seq, todos }
-      }
+      return { hasNewerTerminalAssistant, hasNewerUser, todos }
     } catch {
       // 未知或损坏的投影事件不影响上一份有效 Todo。
     }
   }
-  if (!latestTodo?.todos.length) return undefined
-  return latestTodo.todos.some((todo) => todo.status !== 'completed') ||
-    latestTodo.seq > latestUserSeq
-    ? latestTodo.todos
-    : undefined
+  return undefined
+}
+
+/** 投影当前轮可见计划；用户边界或未完成终态会关闭旧计划。 */
+export function projectCurrentTodos(entries: readonly Entry[]) {
+  const state = projectTodoState(entries)
+  if (!state?.todos.length || state.hasNewerUser) return undefined
+  const incomplete = state.todos.some((todo) => todo.status !== 'completed')
+  if (incomplete && state.hasNewerTerminalAssistant) {
+    return undefined
+  }
+  return state.todos
+}
+
+/** 只为显式无输入续作投影当前用户轮次内的未完成计划。 */
+export function projectRecoverableTodos(entries: readonly Entry[]) {
+  const state = projectTodoState(entries)
+  if (
+    !state?.todos.length ||
+    state.hasNewerUser ||
+    state.todos.every((todo) => todo.status === 'completed')
+  ) {
+    return undefined
+  }
+  return state.todos
 }
 
 function toMessage(

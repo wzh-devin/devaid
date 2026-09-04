@@ -53,7 +53,7 @@ import type {
 } from '../execution/run-input.ts'
 import {
   AgentSessionService,
-  projectCurrentTodos,
+  projectRecoverableTodos,
   type AgentSessionInfo,
   type AgentSessionProjection,
   type AgentSessionRepository,
@@ -529,7 +529,9 @@ export class AgentRuntime {
       }
       if (entries !== opened.entries) await this.sessions.changed(id)
       const context = buildSessionContext(entries)
-      const currentTodos = projectCurrentTodos(entries, Boolean(incoming))
+      const currentTodos = incoming
+        ? undefined
+        : projectRecoverableTodos(entries)
       if (!incoming) {
         const last = context.messages.at(-1)
         if (

@@ -85,6 +85,10 @@ export const clearResolvedApproval = (
     ? { ...approvals, [sessionId]: undefined }
     : approvals
 
+/** 用户主动终止已有运行记录，不在输入框旁重复展示错误提示。 */
+export const visibleRunError = (code: string, message: string) =>
+  code === 'AGENT_RUN_ABORTED' ? '' : message
+
 /** 读取流式消息的当前活动块，并兼容尚未携带 parts 的消息。 */
 const messageActivityParts = (
   message: ChatMessage,
@@ -598,9 +602,7 @@ export function useAgentSessions() {
           streamingAssistant(assistantId),
         ],
         preview,
-        todos: thread.todos?.some((todo) => todo.status !== 'completed')
-          ? thread.todos
-          : undefined,
+        todos: undefined,
         updatedAt: '刚刚',
       }))
 
@@ -760,7 +762,7 @@ export function useAgentSessions() {
                 break
               case 'error':
                 terminal = true
-                runError = event.message
+                runError = visibleRunError(event.code, event.message)
                 updateThread(sessionId, (thread) => ({
                   ...thread,
                   messages: thread.messages.map((item) =>
@@ -775,6 +777,11 @@ export function useAgentSessions() {
                         }
                       : item,
                   ),
+                  todos: thread.todos?.every(
+                    (todo) => todo.status === 'completed',
+                  )
+                    ? thread.todos
+                    : undefined,
                 }))
                 break
               case 'usage':
@@ -809,6 +816,12 @@ export function useAgentSessions() {
 
   const abort = useCallback(
     async (sessionId: string) => {
+      updateThread(sessionId, (thread) => ({
+        ...thread,
+        todos: thread.todos?.every((todo) => todo.status === 'completed')
+          ? thread.todos
+          : undefined,
+      }))
       try {
         await abortAgentSession(sessionId)
         await loadMessages(sessionId)
@@ -825,7 +838,7 @@ export function useAgentSessions() {
         setStatus(sessionId, 'ready')
       }
     },
-    [loadMessages, setStatus],
+    [loadMessages, setStatus, updateThread],
   )
 
   const resolveApproval = useCallback(

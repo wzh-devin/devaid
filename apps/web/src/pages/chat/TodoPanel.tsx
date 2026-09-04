@@ -1,9 +1,5 @@
-import {
-  CheckCircle2Icon,
-  ChevronUpIcon,
-  CircleIcon,
-  LoaderCircleIcon,
-} from 'lucide-react'
+import { CheckCircle2Icon, ChevronUpIcon, LoaderCircleIcon } from 'lucide-react'
+import type { ChatStatus } from '@agile-avocation/ui-pro/prompt-input'
 import { AgentPlan } from '../../components/ui/agent-plan.tsx'
 import {
   Collapsible,
@@ -14,22 +10,20 @@ import type { ChatTodoItem } from '../../features/chat/index.ts'
 import { getTodoProgress, toPlanSteps } from './todo-progress.ts'
 
 interface TodoPanelProps {
+  status: ChatStatus
   todos?: readonly ChatTodoItem[]
 }
 
 /** 在输入框上方展示计划胶囊，并在胶囊下方展开完整步骤。 */
-export function TodoPanel({ todos }: TodoPanelProps) {
+export function TodoPanel({ status, todos }: TodoPanelProps) {
   if (!todos?.length) return null
 
   const progress = getTodoProgress(todos)
   const planSteps = toPlanSteps(todos)
-  const isActive = todos.some((todo) => todo.status === 'in_progress')
   const isComplete = progress.completed === progress.total
-  const StatusIcon = isComplete
-    ? CheckCircle2Icon
-    : isActive
-      ? LoaderCircleIcon
-      : CircleIcon
+  const isRunning = status === 'submitted' || status === 'streaming'
+  if (!isComplete && !isRunning) return null
+  const StatusIcon = isComplete ? CheckCircle2Icon : LoaderCircleIcon
 
   return (
     <Collapsible className="mb-3 flex flex-col items-center gap-2">
@@ -42,9 +36,7 @@ export function TodoPanel({ todos }: TodoPanelProps) {
           className={`size-3.5 shrink-0 ${
             isComplete
               ? 'text-success'
-              : isActive
-                ? 'animate-spin text-accent motion-reduce:animate-none'
-                : 'text-muted'
+              : 'animate-spin text-accent motion-reduce:animate-none'
           }`}
         />
         <span className="sr-only">计划进度：</span>
