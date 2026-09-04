@@ -8,6 +8,27 @@ export interface AgentSessionVo {
   workspaceId: null | string
 }
 
+export interface ContextUsageVo {
+  contextWindow: number
+  messageTokens: number
+  modelId: string
+  providerId: string
+  systemTokens: number
+  toolsTokens: number
+  usedTokens: number
+}
+
+export interface AgentSessionDetailVo extends AgentSessionVo {
+  contextUsage?: ContextUsageVo
+  stats: {
+    cachedTokens: number
+    costTotal: number
+    messageCount: number
+    totalTokens: number
+    uncachedTokens: number
+  }
+}
+
 export interface AgentSessionMessageVo {
   attachments?: AgentSessionMessageAttachmentVo[]
   content: string
@@ -95,6 +116,7 @@ export type AgentRunEventVo =
   | {
       cacheRead: number
       cacheWrite: number
+      contextUsage?: ContextUsageVo
       input: number
       output: number
       total: number

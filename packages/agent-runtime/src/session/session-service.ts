@@ -20,6 +20,10 @@ import type {
 import { AgentRuntimeError } from '../error/agent-runtime-error.ts'
 import { structuredMessageDetails } from '../execution/attachment-message.ts'
 import { safeBashOutcome } from '../execution/bash-outcome.ts'
+import {
+  parseContextUsageSnapshot,
+  type ContextUsageSnapshot,
+} from '../execution/context-usage.ts'
 import type {
   AgentMessageAttachment,
   AgentMessageContextItem,
@@ -71,6 +75,7 @@ export interface AgentSessionProjection {
 }
 
 export interface AgentSessionDetail extends AgentSessionInfo {
+  contextUsage?: ContextUsageSnapshot
   stats: SessionStats
 }
 
@@ -556,12 +561,24 @@ export class AgentSessionService {
   async get(id: string): Promise<AgentSessionDetail> {
     const opened = await this.openSession(id)
     try {
-      const [name, stats] = await Promise.all([
+      const [name, stats, contextUsageEntry] = await Promise.all([
         opened.session.getName(),
         opened.session.getStats(),
+        opened.session.findEntryOnBranch({
+          customType: SESSION_CUSTOM_TYPE.contextUsageSnapshot,
+          order: 'newestFirst',
+          type: 'custom',
+        }),
       ])
+      const contextUsage = parseContextUsageSnapshot(
+        contextUsageEntry?.type === 'custom'
+          ? contextUsageEntry.data
+          : undefined,
+        opened.config,
+      )
       return {
         ...toInfo(opened.metadata, opened.config, name, opened.archived),
+        ...(contextUsage ? { contextUsage } : {}),
         stats,
       }
     } catch (error) {

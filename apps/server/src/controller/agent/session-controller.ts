@@ -117,7 +117,11 @@ function sessionDetailDto(
   session: AgentSessionDetail,
   workspaceId: string | null,
 ): AgentSessionDetailDto {
-  return { ...sessionDto(session, workspaceId), stats: session.stats }
+  return {
+    ...sessionDto(session, workspaceId),
+    ...(session.contextUsage ? { contextUsage: session.contextUsage } : {}),
+    stats: session.stats,
+  }
 }
 
 async function workspaceMap(workspaces: WorkspaceStore) {

@@ -20,7 +20,18 @@ export interface AgentSessionDto {
   workspaceId: null | string
 }
 
+export interface ContextUsageDto {
+  contextWindow: number
+  messageTokens: number
+  modelId: string
+  providerId: string
+  systemTokens: number
+  toolsTokens: number
+  usedTokens: number
+}
+
 export interface AgentSessionDetailDto extends AgentSessionDto {
+  contextUsage?: ContextUsageDto
   stats: {
     cachedTokens: number
     costTotal: number

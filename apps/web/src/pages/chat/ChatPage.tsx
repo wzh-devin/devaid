@@ -171,6 +171,7 @@ export function ChatPage({
             />
           ) : (
             <ChatComposer
+              contextUsage={thread.contextUsage}
               error={error}
               fixedWorkspaceId={thread.workspaceId ?? undefined}
               initialModelId={thread.modelId}

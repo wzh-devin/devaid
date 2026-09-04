@@ -199,8 +199,11 @@ export const toChatMessages = (
   return chatMessages
 }
 
-export const toChatThread = (session: AgentSessionVo): ChatThread => ({
+export const toChatThread = (
+  session: AgentSessionVo & { contextUsage?: ChatThread['contextUsage'] },
+): ChatThread => ({
   archived: session.archived,
+  ...(session.contextUsage ? { contextUsage: session.contextUsage } : {}),
   id: session.id,
   messages: [],
   modelId: session.modelId,

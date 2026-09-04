@@ -127,6 +127,7 @@ export interface ChatMessage {
 
 export interface ChatThread {
   archived: boolean
+  contextUsage?: ChatContextUsage | undefined
   id: string
   messages: readonly ChatMessage[]
   modelId: string
@@ -142,6 +143,16 @@ export interface ChatThread {
     email: string
     name: string
   }
+}
+
+export interface ChatContextUsage {
+  contextWindow: number
+  messageTokens: number
+  modelId: string
+  providerId: string
+  systemTokens: number
+  toolsTokens: number
+  usedTokens: number
 }
 
 export type ChatActivePage =

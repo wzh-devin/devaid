@@ -38,6 +38,8 @@ import { ComposerContextBar } from './ComposerContextBar.tsx'
 import { ComposerModelMenu } from './ComposerModelMenu.tsx'
 import { ComposerPermissionMenu } from './ComposerPermissionMenu.tsx'
 import { ChatAttachmentList } from './ChatAttachmentList.tsx'
+import { ContextUsageMeter } from './ContextUsageMeter.tsx'
+import type { ChatContextUsage } from '../../data/index.ts'
 
 interface PendingAttachment {
   file: File
@@ -56,6 +58,7 @@ interface ComposerMenuState {
 
 interface ChatComposerProps {
   className?: string
+  contextUsage?: ChatContextUsage
   error?: string
   fixedWorkspaceId?: string
   initialModelId?: string
@@ -83,6 +86,7 @@ const revokeAttachmentUrl = (attachment: PendingAttachment) => {
 /** 管理消息草稿、模型和可选能力；运行状态由会话协调层控制。 */
 export function ChatComposer({
   className,
+  contextUsage,
   error,
   fixedWorkspaceId,
   initialModelId = 'gpt-5.4',
@@ -129,6 +133,12 @@ export function ChatComposer({
   const selectedProvider = modelGroups.find((group) =>
     group.models.some((model) => model.key === selectedModelKey),
   )
+  const visibleContextUsage =
+    contextUsage &&
+    contextUsage.modelId === selectedModel?.id &&
+    contextUsage.providerId === selectedProvider?.id
+      ? contextUsage
+      : undefined
   const selectedThinkingLevel = resolveModelThinkingLevel(
     selectedModel?.thinkingLevels ?? ['off'],
     thinkingLevel,
@@ -560,6 +570,9 @@ export function ChatComposer({
                 onChange={(key) => void handleModelChange(key)}
                 onThinkingLevelChange={setThinkingLevel}
               />
+              {visibleContextUsage ? (
+                <ContextUsageMeter usage={visibleContextUsage} />
+              ) : null}
               <PromptInput.Send
                 aria-label={isGenerating ? '停止生成' : '发送消息'}
                 className="size-9 min-h-9 min-w-9"

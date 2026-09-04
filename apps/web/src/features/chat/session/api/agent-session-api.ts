@@ -1,9 +1,11 @@
 import type {
   AgentRunEventVo,
+  AgentSessionDetailVo,
   AgentSessionMessagePageVo,
   AgentSessionVo,
   AgentTodoItemVo,
   BashOutcomeVo,
+  ContextUsageVo,
   PendingToolApprovalVo,
 } from '../types/index.ts'
 import type { ApprovalDecision } from '../../message/index.ts'
@@ -126,6 +128,30 @@ const todoItems = (value: unknown): AgentTodoItemVo[] | undefined => {
     todos.push({ content, status: item.status })
   }
   return todos
+}
+
+/** 校验服务端 SSE 携带的可选上下文快照。 */
+const contextUsage = (value: unknown): ContextUsageVo | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return
+  const usage = value as Record<string, unknown>
+  if (
+    typeof usage.modelId !== 'string' ||
+    typeof usage.providerId !== 'string' ||
+    ![
+      'contextWindow',
+      'messageTokens',
+      'systemTokens',
+      'toolsTokens',
+      'usedTokens',
+    ].every(
+      (key) =>
+        Number.isSafeInteger(usage[key]) &&
+        (usage[key] as number) >= (key === 'contextWindow' ? 1 : 0),
+    )
+  ) {
+    return
+  }
+  return usage as unknown as ContextUsageVo
 }
 
 const sessionPath = (sessionId: string) =>
@@ -252,9 +278,15 @@ function toRunEvent(value: unknown): AgentRunEventVo {
           (key) => typeof event[key] === 'number',
         )
       ) {
+        const parsedContextUsage =
+          event.contextUsage === undefined
+            ? undefined
+            : contextUsage(event.contextUsage)
+        if (event.contextUsage !== undefined && !parsedContextUsage) break
         return {
           cacheRead: event.cacheRead as number,
           cacheWrite: event.cacheWrite as number,
+          ...(parsedContextUsage ? { contextUsage: parsedContextUsage } : {}),
           input: event.input as number,
           output: event.output as number,
           total: event.total as number,
@@ -331,7 +363,7 @@ export const clearArchivedAgentSessions = () =>
   request<void>('/api/agent/sessions/archived', { method: 'DELETE' })
 
 export const getAgentSession = (sessionId: string) =>
-  request<AgentSessionVo>(sessionPath(sessionId))
+  request<AgentSessionDetailVo>(sessionPath(sessionId))
 
 export const createAgentSession = (input: CreateAgentSessionInput) =>
   request<AgentSessionVo>('/api/agent/sessions', {

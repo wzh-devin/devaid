@@ -6,6 +6,7 @@ export {
 export type {
   ChatActivePage,
   ChatAssistantStatus,
+  ChatContextUsage,
   ChatMessage,
   ChatMessageActivity,
   ChatMessageActivityPart,

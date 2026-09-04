@@ -4,6 +4,8 @@ import type {
   ModelThinkingLevel,
 } from '@oh-my-harness/agent-runtime'
 
+import type { ContextUsageDto } from './session-dto.ts'
+
 export interface BashOutcomeDto {
   exitCode: number | null
   outputExceeded: boolean
@@ -66,6 +68,7 @@ export type AgentRunEventDto =
   | {
       cacheRead: number
       cacheWrite: number
+      contextUsage?: ContextUsageDto
       input: number
       output: number
       total: number

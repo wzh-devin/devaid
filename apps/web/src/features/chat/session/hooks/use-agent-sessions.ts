@@ -317,6 +317,11 @@ export function useAgentSessions() {
           return existing
             ? {
                 ...next,
+                contextUsage:
+                  existing.modelId === session.modelId &&
+                  existing.providerId === session.providerId
+                    ? existing.contextUsage
+                    : undefined,
                 messages: existing.messages,
                 preview: existing.preview || next.preview,
                 todos: existing.todos,
@@ -365,6 +370,11 @@ export function useAgentSessions() {
             updateThread(sessionId, (thread) => ({
               ...thread,
               todos: event.todos.length ? event.todos : undefined,
+            }))
+          } else if (event.type === 'usage' && event.contextUsage) {
+            updateThread(sessionId, (thread) => ({
+              ...thread,
+              contextUsage: event.contextUsage,
             }))
           } else if (event.type === 'error') {
             setErrors((current) => ({
@@ -484,6 +494,7 @@ export function useAgentSessions() {
         const session = await updateAgentSessionModel(sessionId, input)
         updateThread(sessionId, (thread) => ({
           ...thread,
+          contextUsage: undefined,
           modelId: session.modelId,
           providerId: session.providerId,
         }))
@@ -785,6 +796,12 @@ export function useAgentSessions() {
                 }))
                 break
               case 'usage':
+                if (event.contextUsage) {
+                  updateThread(sessionId, (thread) => ({
+                    ...thread,
+                    contextUsage: event.contextUsage,
+                  }))
+                }
                 break
             }
           },

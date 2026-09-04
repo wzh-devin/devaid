@@ -43,6 +43,10 @@ import {
   convertAttachmentMessagesToLlm,
 } from '../execution/attachment-message.ts'
 import { safeBashOutcome } from '../execution/bash-outcome.ts'
+import {
+  calculateContextUsage,
+  persistedContextUsageSnapshot,
+} from '../execution/context-usage.ts'
 import { buildSystemPrompt, escapePromptXml } from '../prompt/system-prompt.ts'
 import type { AgentRun, AgentRuntimeEvent } from '../execution/runtime-event.ts'
 import type {
@@ -746,9 +750,20 @@ export class AgentRuntime {
         )
       }
       const usage = finalMessage.usage
+      let contextUsage
+      try {
+        contextUsage = calculateContextUsage(options.agent.state)
+        await options.session.appendCustomEntry(
+          SESSION_CUSTOM_TYPE.contextUsageSnapshot,
+          persistedContextUsageSnapshot(contextUsage),
+        )
+      } catch {
+        contextUsage = undefined
+      }
       options.events.push({
         cacheRead: usage.cacheRead,
         cacheWrite: usage.cacheWrite,
+        ...(contextUsage ? { contextUsage } : {}),
         input: usage.input,
         output: usage.output,
         total: usage.totalTokens,

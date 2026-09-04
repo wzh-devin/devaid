@@ -1,5 +1,7 @@
 import type { BashOutcome, TodoItem } from '@oh-my-harness/agent-tools'
 
+import type { ContextUsageSnapshot } from './context-usage.ts'
+
 export type AgentRuntimeEvent =
   | { sessionId: string; type: 'start' }
   | { delta: string; type: 'text_delta' }
@@ -40,6 +42,7 @@ export type AgentRuntimeEvent =
   | {
       cacheRead: number
       cacheWrite: number
+      contextUsage?: ContextUsageSnapshot
       input: number
       output: number
       total: number
