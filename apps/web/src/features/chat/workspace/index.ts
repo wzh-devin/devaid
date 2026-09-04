@@ -17,6 +17,7 @@ export type {
 } from './api/index.ts'
 export { ChatWorkspaceContext, useChatWorkspace } from './contexts/index.ts'
 export {
+  archiveWorkspaceThreads,
   findWorkspaceByThreadId,
   getWorkspaceFileReference,
   resolveComposerWorkspace,

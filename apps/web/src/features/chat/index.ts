@@ -13,6 +13,7 @@ export {
   ChatSidebar,
 } from './navigation/index.ts'
 export {
+  archiveWorkspaceThreads,
   ChatWorkspaceContext,
   clearDefaultFileEditor,
   FileEditorOpenDialog,

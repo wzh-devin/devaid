@@ -1,10 +1,8 @@
-import { Compass, CopyPicture, SquarePlus } from '@gravity-ui/icons'
+import { SquarePlus } from '@gravity-ui/icons'
 import type { ChatNavItem, ChatSearchMode } from './chat-types.ts'
 
 export const CHAT_NAV_ITEMS: readonly ChatNavItem[] = [
   { href: '/new', icon: SquarePlus, id: 'new', label: '新建对话' },
-  { href: '/library', icon: CopyPicture, id: 'library', label: '资料库' },
-  { href: '/explore', icon: Compass, id: 'explore', label: '探索' },
 ] as const
 
 export const CHAT_SEARCH_MODES: readonly ChatSearchMode[] = [

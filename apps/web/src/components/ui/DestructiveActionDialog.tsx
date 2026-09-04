@@ -3,22 +3,26 @@ import { Button, Modal } from '@heroui/react'
 
 interface DestructiveActionDialogProps {
   confirmLabel: string
+  confirmVariant?: 'danger' | 'primary'
   description: ReactNode
   error?: string
   isPending: boolean
   onClose: () => void
   onConfirm: () => void
+  pendingLabel?: string
   title: string
 }
 
-/** 为不可恢复操作提供一致的二次确认和提交锁。 */
+/** 为批量或不可恢复操作提供一致的二次确认和提交锁。 */
 export function DestructiveActionDialog({
   confirmLabel,
+  confirmVariant = 'danger',
   description,
   error,
   isPending,
   onClose,
   onConfirm,
+  pendingLabel = '正在删除…',
   title,
 }: DestructiveActionDialogProps) {
   return (
@@ -36,7 +40,7 @@ export function DestructiveActionDialog({
       >
         <Modal.Dialog className="w-full max-w-none gap-0 overflow-hidden rounded-3xl bg-surface p-0 shadow-2xl outline-none">
           <Modal.CloseTrigger
-            aria-label="关闭删除确认"
+            aria-label={`关闭${title}`}
             className={`bg-transparent text-foreground hover:bg-surface-secondary ${isPending ? 'pointer-events-none opacity-50' : ''}`}
           />
           <Modal.Header className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
@@ -64,10 +68,10 @@ export function DestructiveActionDialog({
             <Button
               isDisabled={isPending}
               type="button"
-              variant="danger"
+              variant={confirmVariant}
               onPress={onConfirm}
             >
-              {isPending ? '正在删除…' : confirmLabel}
+              {isPending ? pendingLabel : confirmLabel}
             </Button>
           </Modal.Footer>
         </Modal.Dialog>

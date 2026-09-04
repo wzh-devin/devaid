@@ -32,6 +32,7 @@ interface ChatLayoutProps {
   onThreadArchive: (threadId: string, archived: boolean) => Promise<string>
   onThreadRename: (threadId: string, name: string) => Promise<string>
   onWorkspaceAdd: () => Promise<ChatWorkspace | null>
+  onWorkspaceArchiveAll: (workspaceId: string) => Promise<string>
   onWorkspaceDelete: (workspaceId: string) => Promise<string>
   onWorkspaceSelect: (workspaceId: string) => void
   selectedWorkspaceId: string
@@ -68,6 +69,7 @@ export function ChatLayout({
   onThreadArchive,
   onThreadRename,
   onWorkspaceAdd,
+  onWorkspaceArchiveAll,
   onWorkspaceDelete,
   onWorkspaceSelect,
   selectedWorkspaceId,
@@ -271,7 +273,12 @@ export function ChatLayout({
                 setIsSettingsOpen(true)
               }}
               onWorkspaceAdd={onWorkspaceAdd}
+              onWorkspaceArchiveAll={onWorkspaceArchiveAll}
               onWorkspaceDelete={onWorkspaceDelete}
+              onWorkspaceNewChat={(workspaceId) => {
+                onWorkspaceSelect(workspaceId)
+                onNavigate('/new')
+              }}
               onWorkspaceSelect={onWorkspaceSelect}
               threads={threads}
             />

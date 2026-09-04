@@ -68,6 +68,9 @@ importers:
       '@heroui/styles':
         specifier: 3.2.4
         version: 3.2.4(tailwind-merge@3.6.0)(tailwindcss@4.3.3)
+      '@lobehub/icons-static-svg':
+        specifier: 1.94.0
+        version: 1.94.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -751,6 +754,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@lobehub/icons-static-svg@1.94.0':
+    resolution: {integrity: sha512-Inx1TYkjLH6YeHOIHeVW9+OM/xxRnk8TmcQVKquFUDBmE3X9sUuRGt7kALrrDBNNAbrWz7Qq6fAiFj9E9Mmw9Q==}
 
   '@mapbox/jsonlint-lines-primitives@2.0.3':
     resolution: {integrity: sha512-0SElaV0uMxEnxzBhhX9WTuPyUeMsAN/SS0i16tjuba4/mio63MG9khjC1a0JAiPGXAwvwm4UfHJURCN7nyudQg==}
@@ -4653,6 +4659,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@lobehub/icons-static-svg@1.94.0': {}
 
   '@mapbox/jsonlint-lines-primitives@2.0.3': {}
 

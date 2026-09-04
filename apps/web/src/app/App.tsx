@@ -3,6 +3,7 @@ import {
   type ChatActivePage,
   type ChatSubmitPayload,
   type ChatThread,
+  archiveWorkspaceThreads,
   createPendingChatThread,
   findWorkspaceByThreadId,
   useAgentSessions,
@@ -198,6 +199,23 @@ export function App() {
     return error
   }, [clearArchivedSessions, commitNavigation, selectedThread?.archived])
 
+  /** 顺序归档工作区普通会话；部分失败时重新同步服务端权威列表。 */
+  const handleWorkspaceArchiveAll = useCallback(
+    async (workspaceId: string) => {
+      const threadIds = activeThreads
+        .filter((thread) => thread.workspaceId === workspaceId)
+        .map((thread) => thread.id)
+      const result = await archiveWorkspaceThreads(threadIds, (threadId) =>
+        setSessionArchived(threadId, true),
+      )
+      if (result.failedCount === 0) return ''
+
+      await refreshSessions()
+      return `已归档 ${result.archivedCount} 条，${result.failedCount} 条失败：${result.firstError}`
+    },
+    [activeThreads, refreshSessions, setSessionArchived],
+  )
+
   /** 删除工作区后清理所属会话；部分失败时重新校准服务端状态。 */
   const handleWorkspaceDelete = useCallback(
     async (workspaceId: string) => {
@@ -279,6 +297,7 @@ export function App() {
       onThreadRename={renameSession}
       workspaceError={workspaceError}
       onWorkspaceAdd={addWorkspace}
+      onWorkspaceArchiveAll={handleWorkspaceArchiveAll}
       onWorkspaceDelete={handleWorkspaceDelete}
       onWorkspaceSelect={setSelectedWorkspaceId}
     >

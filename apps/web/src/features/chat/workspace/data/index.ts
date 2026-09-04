@@ -1,4 +1,5 @@
 export {
+  archiveWorkspaceThreads,
   findWorkspaceByThreadId,
   resolveComposerWorkspace,
 } from './workspace-data.ts'

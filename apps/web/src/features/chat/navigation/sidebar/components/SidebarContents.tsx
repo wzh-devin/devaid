@@ -4,10 +4,12 @@ import {
   Archive,
   Ellipsis,
   Folder,
+  FolderOpen,
   FolderPlus,
   Gear,
   Magnifier,
   Pencil,
+  SquarePlus,
   TrashBin,
 } from '@gravity-ui/icons'
 import { Button, Dropdown, Tooltip } from '@heroui/react'
@@ -163,6 +165,8 @@ export function SidebarContents({
   onSettings,
   onThreadArchive,
   onThreadRename,
+  onWorkspaceArchiveAll,
+  onWorkspaceNewChat,
   onWorkspaceToggle,
   onWorkspaceDelete,
   selectedWorkspaceId,
@@ -175,6 +179,9 @@ export function SidebarContents({
     useState<ChatSidebarProps['workspaces'][number]>()
   const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false)
   const [workspaceDeleteError, setWorkspaceDeleteError] = useState('')
+  const [workspaceToArchiveId, setWorkspaceToArchiveId] = useState('')
+  const [isArchivingWorkspace, setIsArchivingWorkspace] = useState(false)
+  const [workspaceArchiveError, setWorkspaceArchiveError] = useState('')
   const { isMobile, isOpen, setMobileOpen } = useSidebar()
   const isCollapsed = !isMobile && !isOpen
   const visibleNavItems = isCollapsed
@@ -183,6 +190,20 @@ export function SidebarContents({
   const handleSettings = () => {
     if (isMobile) setMobileOpen(false)
     onSettings()
+  }
+  const workspaceToArchive = workspaces.find(
+    (workspace) => workspace.id === workspaceToArchiveId,
+  )
+
+  /** 归档工作区内当前全部普通会话，并保留部分失败信息供重试。 */
+  const archiveWorkspace = async () => {
+    if (!workspaceToArchive) return
+    setIsArchivingWorkspace(true)
+    setWorkspaceArchiveError('')
+    const error = await onWorkspaceArchiveAll(workspaceToArchive.id)
+    setWorkspaceArchiveError(error)
+    setIsArchivingWorkspace(false)
+    if (!error) setWorkspaceToArchiveId('')
   }
 
   /** 删除工作区及会话，并保留失败信息供用户重试。 */
@@ -304,6 +325,7 @@ export function SidebarContents({
                   )
                   const isExpanded = expandedWorkspaceIds.has(workspace.id)
                   const isSelected = selectedWorkspaceId === workspace.id
+                  const WorkspaceFolderIcon = isExpanded ? FolderOpen : Folder
 
                   return (
                     <section key={workspace.id}>
@@ -316,7 +338,7 @@ export function SidebarContents({
                           variant="ghost"
                           onPress={() => onWorkspaceToggle(workspace.id)}
                         >
-                          <Folder
+                          <WorkspaceFolderIcon
                             className={`size-4 shrink-0 ${isSelected ? 'text-accent' : 'text-muted'}`}
                           />
                           <span className="truncate">{workspace.label}</span>
@@ -330,7 +352,9 @@ export function SidebarContents({
                           <Dropdown.Trigger
                             aria-label={`管理工作区：${workspace.label}`}
                             className="-ml-9 mr-1 size-8 shrink-0 opacity-100 transition-opacity md:opacity-0 md:group-focus-within/workspace:opacity-100 md:group-hover/workspace:opacity-100"
-                            isDisabled={isDeletingWorkspace}
+                            isDisabled={
+                              isDeletingWorkspace || isArchivingWorkspace
+                            }
                             onClick={(event) => event.stopPropagation()}
                           >
                             <Ellipsis className="size-4" />
@@ -342,11 +366,33 @@ export function SidebarContents({
                             <Dropdown.Menu
                               aria-label="工作区操作"
                               onAction={(key) => {
-                                if (key === 'delete') {
+                                if (key === 'new-chat') {
+                                  onWorkspaceNewChat(workspace.id)
+                                  if (isMobile) setMobileOpen(false)
+                                } else if (key === 'archive-all') {
+                                  setWorkspaceArchiveError('')
+                                  setWorkspaceToArchiveId(workspace.id)
+                                } else if (key === 'delete') {
                                   setWorkspaceToDelete(workspace)
                                 }
                               }}
                             >
+                              <Dropdown.Item
+                                id="new-chat"
+                                isDisabled={!workspace.available}
+                                textValue="新建对话"
+                              >
+                                <SquarePlus className="size-4" />
+                                新建对话
+                              </Dropdown.Item>
+                              <Dropdown.Item
+                                id="archive-all"
+                                isDisabled={workspaceThreads.length === 0}
+                                textValue="归档所有对话"
+                              >
+                                <Archive className="size-4" />
+                                归档所有对话
+                              </Dropdown.Item>
                               <Dropdown.Item
                                 className="text-danger"
                                 id="delete"
@@ -442,6 +488,22 @@ export function SidebarContents({
             setWorkspaceToDelete(undefined)
           }}
           onConfirm={() => void deleteWorkspace()}
+        />
+      ) : null}
+      {workspaceToArchive ? (
+        <DestructiveActionDialog
+          confirmLabel="归档所有对话"
+          confirmVariant="primary"
+          description={`将归档“${workspaceToArchive.label}”中的全部 ${workspaceToArchive.threadIds.length} 条对话。归档后可在设置中恢复。`}
+          error={workspaceArchiveError}
+          isPending={isArchivingWorkspace}
+          pendingLabel="正在归档…"
+          title="归档所有对话"
+          onClose={() => {
+            setWorkspaceArchiveError('')
+            setWorkspaceToArchiveId('')
+          }}
+          onConfirm={() => void archiveWorkspace()}
         />
       ) : null}
     </>
